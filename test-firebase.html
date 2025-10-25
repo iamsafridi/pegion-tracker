@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .loading { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔥 Firebase Connection Test</h1>
+        <p>This page will test your Firebase connection and Firestore database setup.</p>
+        
+        <div id="status" class="status loading">
+            🔄 Initializing Firebase...
+        </div>
+        
+        <div id="details"></div>
+        
+        <div style="margin-top: 20px;">
+            <button onclick="testConnection()">🔄 Test Connection</button>
+            <button onclick="testWrite()">✍️ Test Write</button>
+            <button onclick="testRead()">📖 Test Read</button>
+            <button onclick="clearTests()">🗑️ Clear Test Data</button>
+        </div>
+        
+        <div id="logs" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    
+    <script>
+        let testResults = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            testResults.push(`[${timestamp}] ${message}`);
+            
+            const logsDiv = document.getElementById('logs');
+            const logEntry = document.createElement('div');
+            logEntry.className = `status ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logsDiv.appendChild(logEntry);
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function updateStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+        
+        async function initializeTest() {
+            try {
+                log('🔥 Firebase initialized successfully', 'success');
+                log(`📊 Project ID: ${firebase.app().options.projectId}`, 'info');
+                log(`🌐 Auth Domain: ${firebase.app().options.authDomain}`, 'info');
+                
+                updateStatus('✅ Firebase Connected Successfully!', 'success');
+                
+                // Test Firestore connection
+                const db = firebase.firestore();
+                log('🗄️ Firestore initialized', 'success');
+                
+                return true;
+            } catch (error) {
+                log(`❌ Firebase initialization failed: ${error.message}`, 'error');
+                updateStatus('❌ Firebase Connection Failed', 'error');
+                return false;
+            }
+        }
+        
+        async function testConnection() {
+            log('🔄 Testing Firebase connection...', 'info');
+            
+            try {
+                const db = firebase.firestore();
+                
+                // Try to get server timestamp (tests connection)
+                const testDoc = db.collection('connection-test').doc('test');
+                await testDoc.set({
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                    test: 'connection'
+                });
+                
+                log('✅ Connection test successful!', 'success');
+                
+                // Clean up test document
+                await testDoc.delete();
+                log('🗑️ Test document cleaned up', 'info');
+                
+            } catch (error) {
+                log(`❌ Connection test failed: ${error.message}`, 'error');
+                
+                if (error.code === 'permission-denied') {
+                    log('💡 Tip: Check your Firestore security rules', 'info');
+                } else if (error.code === 'unavailable') {
+                    log('💡 Tip: Check your internet connection', 'info');
+                }
+            }
+        }
+        
+        async function testWrite() {
+            log('✍️ Testing write operation...', 'info');
+            
+            try {
+                const db = firebase.firestore();
+                const testData = {
+                    name: 'Test Race',
+                    date: '2025-01-31',
+                    location: 'Test Location',
+                    distance: 70.35,
+                    releaseTime: '08:05',
+                    visibility: 'CLEAR',
+                    entries: [],
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                const docRef = await db.collection('races').add(testData);
+                log(`✅ Write test successful! Document ID: ${docRef.id}`, 'success');
+                
+                // Store the test doc ID for cleanup
+                window.testDocId = docRef.id;
+                
+            } catch (error) {
+                log(`❌ Write test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testRead() {
+            log('📖 Testing read operation...', 'info');
+            
+            try {
+                const db = firebase.firestore();
+                const snapshot = await db.collection('races').limit(5).get();
+                
+                log(`✅ Read test successful! Found ${snapshot.size} documents`, 'success');
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    log(`📄 Document: ${doc.id} - ${data.name || 'Unnamed'}`, 'info');
+                });
+                
+            } catch (error) {
+                log(`❌ Read test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function clearTests() {
+            log('🗑️ Cleaning up test data...', 'info');
+            
+            try {
+                const db = firebase.firestore();
+                
+                // Delete test document if it exists
+                if (window.testDocId) {
+                    await db.collection('races').doc(window.testDocId).delete();
+                    log(`✅ Test document ${window.testDocId} deleted`, 'success');
+                    window.testDocId = null;
+                }
+                
+                // Clean up any connection test documents
+                const testDocs = await db.collection('connection-test').get();
+                const batch = db.batch();
+                testDocs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                if (!testDocs.empty) {
+                    await batch.commit();
+                    log(`✅ Cleaned up ${testDocs.size} connection test documents`, 'success');
+                }
+                
+            } catch (error) {
+                log(`❌ Cleanup failed: ${error.message}`, 'error');
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for Firebase to load
+            await initializeTest();
+        });
+    </script>
+</body>
+</html>
