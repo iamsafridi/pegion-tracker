@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHAPAINAWABGANJ RACING PEGION ASSOCIATION</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <h1><i class="fas fa-dove"></i> CHAPAINAWABGANJ RACING PEGION ASSOCIATION</h1>
+                <div class="header-info">
+                    <span class="current-race" id="currentRaceInfo">Select a race to view</span>
+                </div>
+            </div>
+            <div class="header-actions">
+                <button class="race-btn" onclick="openRaceModal()">
+                    <i class="fas fa-calendar-plus"></i> New Race
+                </button>
+
+                <button class="add-btn" onclick="openAddModal()" id="addEntryBtn" disabled>
+                    <i class="fas fa-plus"></i> Add Entry
+                </button>
+            </div>
+        </header>
+
+        <div class="race-selector">
+            <div class="race-selector-content">
+                <label for="raceSelect">Select Race:</label>
+                <select id="raceSelect" onchange="switchRace()">
+                    <option value="">Choose a race...</option>
+                </select>
+                <button class="btn-edit-race" onclick="editCurrentRace()" id="editRaceBtn" disabled>
+                    <i class="fas fa-edit"></i> Edit Race
+                </button>
+                <button class="btn-delete-race" onclick="deleteCurrentRace()" id="deleteRaceBtn" disabled>
+                    <i class="fas fa-trash"></i> Delete Race
+                </button>
+            </div>
+        </div>
+
+        <!-- Professional Race Header -->
+        <div class="race-header" id="raceHeaderSection" style="display: none;">
+            <div class="race-header-content">
+                <div class="logo-section">
+                    <div class="logo-placeholder">
+                        <i class="fas fa-dove"></i>
+                    </div>
+                </div>
+                <div class="association-title">
+                    <h1>CHAPAINAWABGANJ RACING PEGION ASSOCIATION</h1>
+                </div>
+                <div class="race-info-grid">
+                    <div class="race-info-left">
+                        <div class="info-row">
+                            <span class="label">Release Time:</span>
+                            <span class="value" id="headerReleaseTime">08:05:00 AM</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Number Of P</span>
+                            <span class="value" id="headerParticipants">0</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">No.Of Participant :</span>
+                            <span class="value" id="headerParticipantCount">0</span>
+                        </div>
+                    </div>
+                    <div class="race-info-center">
+                        <div class="race-name-badge" id="headerRaceName">
+                            JOBAIL BULL 70KM
+                        </div>
+                        <div class="race-year">2024-2025</div>
+                    </div>
+                    <div class="race-info-right">
+                        <div class="info-row">
+                            <span class="label">Date :</span>
+                            <span class="value" id="headerDate">31TH JANUARY 2025</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Visibility:</span>
+                            <span class="value" id="headerVisibility">FOGGY</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Registered Pigeon:</span>
+                            <span class="value" id="headerRegisteredPigeons">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fas fa-users"></i>
+                <div>
+                    <h3 id="totalParticipants">0</h3>
+                    <p>Participants</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-dove"></i>
+                <div>
+                    <h3 id="totalPigeons">0</h3>
+                    <p>Registered Pigeons</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-trophy"></i>
+                <div>
+                    <h3 id="completedRaces">0</h3>
+                    <p>Completed</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <h3 id="avgTime">--:--</h3>
+                    <p>Avg Time</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Search by loft name, ring number...">
+            </div>
+            <div class="filter-controls">
+                <select id="cultureFilter">
+                    <option value="">All Cultures</option>
+                </select>
+                <select id="clubFilter">
+                    <option value="">All Clubs</option>
+                </select>
+                <select id="entriesPerPage" onchange="changeEntriesPerPage()">
+                    <option value="10">10 per page</option>
+                    <option value="20">20 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="all">Show All</option>
+                </select>
+                <button class="download-btn" onclick="downloadPDF()" id="downloadBtn" disabled>
+                    <i class="fas fa-download"></i> Download PDF
+                </button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="race-table" id="raceTable">
+                <thead>
+                    <tr>
+                        <th class="position-header">POSITION</th>
+                        <th class="sl-header">S/L</th>
+                        <th class="loft-header">Loft's Name</th>
+                        <th class="ring-header">Ban Ring No</th>
+                        <th class="culture-header">Culture</th>
+                        <th class="distance-header">Distance<br>(KM)</th>
+                        <th class="release-header">Release<br>Time</th>
+                        <th class="trapping-header">Trapping<br>Time</th>
+                        <th class="total-header">Total Time</th>
+                        <th class="second-header">Second</th>
+                        <th class="minute-header">Minute</th>
+                        <th class="velocity-header">Velocity<br>(YPM)</th>
+                        <th class="club-header">Club<br>Name</th>
+                        <th class="actions-header">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-container" id="paginationContainer" style="display: none;">
+            <div class="pagination-info">
+                <span id="paginationInfo">Showing 1-10 of 0 entries</span>
+            </div>
+            <div class="pagination-controls">
+                <button class="pagination-btn" id="firstPageBtn" onclick="goToPage(1)" disabled>
+                    <i class="fas fa-angle-double-left"></i>
+                </button>
+                <button class="pagination-btn" id="prevPageBtn" onclick="goToPage(currentPage - 1)" disabled>
+                    <i class="fas fa-angle-left"></i>
+                </button>
+                <div class="page-numbers" id="pageNumbers"></div>
+                <button class="pagination-btn" id="nextPageBtn" onclick="goToPage(currentPage + 1)" disabled>
+                    <i class="fas fa-angle-right"></i>
+                </button>
+                <button class="pagination-btn" id="lastPageBtn" onclick="goToPage(totalPages)" disabled>
+                    <i class="fas fa-angle-double-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race Modal -->
+    <div id="raceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="raceModalTitle">Create New Race</h2>
+                <span class="close" onclick="closeRaceModal()">&times;</span>
+            </div>
+            <form id="raceForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="raceName">Race Name</label>
+                        <input type="text" id="raceName" placeholder="e.g., JOBAIL BULL 70KM" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raceDate">Race Date</label>
+                        <input type="date" id="raceDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raceLocation">Location</label>
+                        <input type="text" id="raceLocation" placeholder="e.g., Jobail Bull" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raceDistance">Distance (KM)</label>
+                        <input type="number" id="raceDistance" step="0.01" placeholder="70.35" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raceReleaseTime">Release Time</label>
+                        <input type="time" id="raceReleaseTime" value="08:05" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="raceVisibility">Visibility</label>
+                        <select id="raceVisibility">
+                            <option value="CLEAR">CLEAR</option>
+                            <option value="FOGGY">FOGGY</option>
+                            <option value="CLOUDY">CLOUDY</option>
+                            <option value="RAINY">RAINY</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeRaceModal()">Cancel</button>
+                    <button type="submit">Save Race</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+
+    <!-- Add/Edit Entry Modal -->
+    <div id="entryModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Entry</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <form id="entryForm">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="loftName">Loft Name</label>
+                        <input type="text" id="loftName" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ringNumber">Ring Number</label>
+                        <input type="text" id="ringNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="culture">Culture</label>
+                        <select id="culture" required>
+                            <option value="">Select Culture</option>
+                            <option value="blue">Blue</option>
+                            <option value="cheq">Cheq</option>
+                            <option value="pire">Pire</option>
+                            <option value="mksl">MKSL</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="entryDistance">Distance (KM)</label>
+                        <input type="number" id="entryDistance" step="0.01"
+                            placeholder="Leave empty to use race distance">
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Optional: Override race
+                            distance for this pigeon</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="trappingTime">Trapping Time</label>
+                        <input type="time" id="trappingTime" step="1" required>
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Includes seconds for precise
+                            timing</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="club">Club</label>
+                        <select id="club" required>
+                            <option value="">Select Club</option>
+                            <option value="CNRPA">CNRPA</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeModal()">Cancel</button>
+                    <button type="submit">Save Entry</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- PDF Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Firebase Configuration -->
+    <script src="firebase-config.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
