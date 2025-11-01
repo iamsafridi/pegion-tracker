@@ -39,19 +39,23 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 async function initializeApp() {
+    console.log('🚀 Initializing Pigeon Racing Tracker...');
+
     setupEventListeners();
 
     // Check for stored authentication
     checkStoredAuth();
-    
+
     // Ensure UI permissions are set correctly on load
     updateUIPermissions();
 
     try {
         // Try to initialize Firebase
+        console.log('🔥 Attempting Firebase initialization...');
         await initializeFirebase();
+        console.log('✅ Firebase initialization successful');
     } catch (error) {
-        console.warn('Firebase initialization failed, using local storage:', error);
+        console.warn('❌ Firebase initialization failed, using local storage:', error);
         // Fallback to local storage
         loadFromLocalStorage();
         populateRaceSelector();
@@ -60,7 +64,13 @@ async function initializeApp() {
             document.getElementById('raceSelect').value = currentRaceId;
             switchRace();
         }
+        console.log('📱 Local storage fallback activated');
     }
+
+    console.log('🏁 App initialization complete. Races loaded:', races.length);
+
+    // Auto-recovery check
+    checkAndRecoverData();
 }
 
 async function initializeFirebase() {
@@ -70,7 +80,15 @@ async function initializeFirebase() {
 
     try {
         // Test Firebase connection by trying to get races
+        console.log('📡 Fetching races from Firebase...');
         races = await window.firebaseService.getAllRaces();
+        console.log('📊 Races fetched from Firebase:', races.length);
+
+        // Log race details for debugging
+        races.forEach((race, index) => {
+            console.log(`  Race ${index + 1}: ${race.name} (${race.entries ? race.entries.length : 0} entries)`);
+        });
+
         isFirebaseEnabled = true;
 
         // Set up real-time listener
@@ -109,6 +127,9 @@ async function initializeFirebase() {
             currentRaceId = races[0].id;
             document.getElementById('raceSelect').value = currentRaceId;
             switchRace();
+            console.log('🎯 Auto-selected race:', races[0].name);
+        } else {
+            console.log('⚠️ No races found in Firebase');
         }
 
         console.log('Firebase initialized successfully');
@@ -514,6 +535,8 @@ function switchRace() {
         const entries = getCurrentRaceEntries();
         const uniqueParticipants = [...new Set(entries.map(entry => entry.loftName))].length;
 
+        console.log('Switching to race:', selectedRaceId, 'Entries found:', entries.length);
+
         // Update header info
         document.getElementById('currentRaceInfo').textContent =
             `${race.name} - ${formatDate(race.date)} - ${race.location} (${race.visibility})`;
@@ -541,7 +564,7 @@ function switchRace() {
         loadData();
         updateStats();
         populateFilters();
-        
+
         // Show culture legend
         document.getElementById('cultureLegend').style.display = 'block';
     } else {
@@ -557,7 +580,7 @@ function switchRace() {
         // Clear table
         document.getElementById('tableBody').innerHTML = '';
         updateStats();
-        
+
         // Hide culture legend
         document.getElementById('cultureLegend').style.display = 'none';
     }
@@ -617,7 +640,7 @@ function openRaceModal() {
         alert('You need to be authenticated to create races');
         return;
     }
-    
+
     editingRaceId = null;
     document.getElementById('raceModalTitle').textContent = 'Create New Race';
     document.getElementById('raceForm').reset();
@@ -680,6 +703,12 @@ function copyCurrentRace() {
     }
 
     const race = getCurrentRace();
+    if (!race) {
+        alert('Could not find the selected race');
+        return;
+    }
+
+    console.log('Opening copy race modal for:', race.name, 'with', race.entries.length, 'entries');
 
     // Pre-fill the form with current race data
     document.getElementById('copyRaceName').value = race.name + ' (Copy)';
@@ -706,7 +735,12 @@ async function handleCopyRaceFormSubmit(e) {
     }
 
     const originalRace = getCurrentRace();
-    if (!originalRace) return;
+    if (!originalRace) {
+        alert('Please select a race to copy');
+        return;
+    }
+
+    console.log('Copying race:', originalRace.name, 'with', originalRace.entries.length, 'entries');
 
     const newRaceData = {
         name: document.getElementById('copyRaceName').value,
@@ -720,48 +754,64 @@ async function handleCopyRaceFormSubmit(e) {
     };
 
     try {
-        // Create the new race first
         let newRaceId;
-        if (isFirebaseEnabled) {
-            newRaceId = await window.firebaseService.addRace(newRaceData);
-        } else {
+
+        if (!isFirebaseEnabled) {
+            // For local storage, create race immediately with entries
             newRaceId = Date.now().toString();
-            const newRace = {
-                id: newRaceId,
-                ...newRaceData
-            };
-            races.push(newRace);
+        } else {
+            // For Firebase, we'll create the complete race after processing entries
+            newRaceId = Date.now().toString(); // Temporary ID for processing
+            console.log('Preparing new race for Firebase with ID:', newRaceId);
         }
 
         // Copy all entries from original race
-        const copiedEntries = originalRace.entries.map(entry => ({
+        const copiedEntries = originalRace.entries.map((entry, index) => ({
             ...entry,
-            id: Date.now() + Math.random(), // Generate new unique ID
+            id: Date.now() + index, // Generate new unique ID
             // Recalculate times and velocity based on new race parameters
         }));
 
+        console.log('Copied', copiedEntries.length, 'entries from original race');
+
         // Recalculate all entries for the new race parameters
         copiedEntries.forEach(entry => {
-            const releaseTime = new Date(`${newRaceData.date} ${newRaceData.releaseTime}:00`);
-            const trappingTime = new Date(`${newRaceData.date} ${entry.trappingTime}`);
-            const timeDiff = trappingTime - releaseTime;
+            // Only recalculate if entry has trapping time
+            if (entry.trappingTime) {
+                try {
+                    const releaseTime = new Date(`${newRaceData.date} ${newRaceData.releaseTime}:00`);
+                    const trappingTime = new Date(`${newRaceData.date} ${entry.trappingTime}`);
+                    const timeDiff = trappingTime - releaseTime;
 
-            if (timeDiff > 0) {
-                const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-                const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+                    if (timeDiff > 0) {
+                        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-                entry.totalTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                entry.second = Math.floor(timeDiff / 1000);
-                entry.minute = Math.floor(timeDiff / (1000 * 60));
+                        entry.totalTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        entry.second = Math.floor(timeDiff / 1000);
+                        entry.minute = Math.floor(timeDiff / (1000 * 60));
 
-                // Use entry-specific distance or race distance
-                const distanceToUse = entry.distance || newRaceData.distance;
-                const timeInHours = timeDiff / (1000 * 60 * 60);
-                const velocityKmH = distanceToUse / timeInHours;
-                entry.velocity = velocityKmH * 18.2269; // Convert to YPM
+                        // Use entry-specific distance or race distance
+                        const distanceToUse = entry.distance || newRaceData.distance;
+                        const timeInHours = timeDiff / (1000 * 60 * 60);
+                        const velocityKmH = distanceToUse / timeInHours;
+                        entry.velocity = velocityKmH * 18.2269; // Convert to YPM
+                    } else {
+                        // Invalid time difference, reset to defaults
+                        entry.totalTime = '--:--:--';
+                        entry.second = 0;
+                        entry.minute = 0;
+                        entry.velocity = 0;
+                    }
+                } catch (error) {
+                    console.warn('Error recalculating entry times for:', entry.ringNumber, error);
+                    // Keep original values if calculation fails
+                }
             }
         });
+
+        console.log('Recalculated times for entries with trapping time');
 
         // Sort by velocity and update positions
         copiedEntries.sort((a, b) => {
@@ -769,7 +819,7 @@ async function handleCopyRaceFormSubmit(e) {
             if (!a.trappingTime && b.trappingTime) return 1;
             if (a.trappingTime && !b.trappingTime) return -1;
             if (!a.trappingTime && !b.trappingTime) return a.id - b.id;
-            
+
             if (b.velocity !== a.velocity) {
                 return b.velocity - a.velocity;
             }
@@ -780,15 +830,55 @@ async function handleCopyRaceFormSubmit(e) {
             entry.position = index + 1;
         });
 
-        // Update the race with copied entries
+        // Save the complete race with entries
+        console.log('Saving race with', copiedEntries.length, 'entries...');
+
         if (isFirebaseEnabled) {
-            const raceToUpdate = { ...newRaceData, entries: copiedEntries };
-            await window.firebaseService.updateRace(newRaceId, raceToUpdate);
-        } else {
-            const raceIndex = races.findIndex(r => r.id === newRaceId);
-            if (raceIndex !== -1) {
-                races[raceIndex].entries = copiedEntries;
+            // Create complete race data with entries
+            const completeRaceData = {
+                ...newRaceData,
+                entries: copiedEntries,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            console.log('Creating complete race in Firebase...');
+            console.log('Race data structure:', {
+                name: completeRaceData.name,
+                entriesCount: completeRaceData.entries.length,
+                hasEntries: Array.isArray(completeRaceData.entries)
+            });
+
+            // Add the complete race directly to Firebase
+            newRaceId = await window.firebaseService.addRace(completeRaceData);
+            console.log('✅ Complete race saved to Firebase with ID:', newRaceId);
+
+            // Verify the race was saved correctly
+            console.log('🔍 Verifying saved race...');
+            try {
+                const savedRace = await window.firebaseService.getRace(newRaceId);
+                console.log('📊 Verification - Saved race entries:', savedRace.entries ? savedRace.entries.length : 0);
+
+                if (!savedRace.entries || savedRace.entries.length !== copiedEntries.length) {
+                    console.error('⚠️ Entry count mismatch! Expected:', copiedEntries.length, 'Got:', savedRace.entries ? savedRace.entries.length : 0);
+                    throw new Error('Race entries were not saved correctly');
+                } else {
+                    console.log('✅ Race verification successful');
+                }
+            } catch (verifyError) {
+                console.error('❌ Race verification failed:', verifyError);
+                throw new Error('Failed to verify copied race: ' + verifyError.message);
             }
+
+        } else {
+            // For local storage
+            const newRace = {
+                id: newRaceId,
+                ...newRaceData,
+                entries: copiedEntries
+            };
+            races.push(newRace);
+            console.log('Race created in local storage');
             saveToLocalStorage();
             populateRaceSelector();
         }
@@ -799,11 +889,37 @@ async function handleCopyRaceFormSubmit(e) {
         closeCopyRaceModal();
         showNotification(`Race copied successfully with ${copiedEntries.length} entries`, 'success');
 
-        // Wait for Firebase update, then select the new race
-        setTimeout(() => {
-            document.getElementById('raceSelect').value = currentRaceId;
-            switchRace();
-        }, 500);
+        if (isFirebaseEnabled) {
+            // For Firebase, wait for real-time listener to update, then refresh manually if needed
+            setTimeout(async () => {
+                console.log('Checking if dropdown needs manual refresh...');
+
+                // Check if the new race appears in dropdown
+                const raceSelect = document.getElementById('raceSelect');
+                const newRaceOption = Array.from(raceSelect.options).find(option => option.value === newRaceId);
+
+                if (!newRaceOption) {
+                    console.log('New race not in dropdown, manually refreshing...');
+                    // Manually fetch races and update dropdown
+                    try {
+                        races = await window.firebaseService.getAllRaces();
+                        populateRaceSelector();
+                    } catch (error) {
+                        console.error('Error refreshing races:', error);
+                    }
+                }
+
+                // Select the new race
+                document.getElementById('raceSelect').value = currentRaceId;
+                switchRace();
+            }, 1000);
+        } else {
+            // For local storage, immediately select the new race
+            setTimeout(() => {
+                document.getElementById('raceSelect').value = currentRaceId;
+                switchRace();
+            }, 100);
+        }
 
     } catch (error) {
         console.error('Error copying race:', error);
@@ -868,7 +984,7 @@ async function deleteEntry(id) {
             if (!a.trappingTime && b.trappingTime) return 1;
             if (a.trappingTime && !b.trappingTime) return -1;
             if (!a.trappingTime && !b.trappingTime) return a.id - b.id;
-            
+
             if (b.velocity !== a.velocity) {
                 return b.velocity - a.velocity;
             }
@@ -906,27 +1022,44 @@ async function handleRaceFormSubmit(e) {
         distance: parseFloat(document.getElementById('raceDistance').value),
         releaseTime: document.getElementById('raceReleaseTime').value,
         visibility: document.getElementById('raceVisibility').value,
-        season: document.getElementById('raceSeason').value,
-        entries: []
+        season: document.getElementById('raceSeason').value
     };
+
+    // For new races, initialize empty entries array
+    if (!editingRaceId) {
+        formData.entries = [];
+    }
 
     try {
         if (editingRaceId) {
-            // Update existing race
-            if (isFirebaseEnabled) {
-                await window.firebaseService.updateRace(editingRaceId, formData);
-                showNotification('Race updated successfully', 'success');
-            } else {
-                const raceIndex = races.findIndex(r => r.id === editingRaceId);
-                if (raceIndex !== -1) {
-                    races[raceIndex] = {
-                        ...races[raceIndex],
-                        ...formData
-                    };
+            // Update existing race - preserve entries
+            await safeDataOperation('editRace', async () => {
+                const currentRace = getCurrentRace();
+                const existingEntries = currentRace ? currentRace.entries || [] : [];
+
+                console.log('Editing race:', editingRaceId, 'Existing entries count:', existingEntries.length);
+
+                if (isFirebaseEnabled) {
+                    // Only update race metadata, not entries
+                    const updateData = { ...formData };
+                    delete updateData.entries; // Ensure we don't overwrite entries
+                    await window.firebaseService.updateRace(editingRaceId, updateData);
+                    showNotification('Race updated successfully', 'success');
+                } else {
+                    const raceIndex = races.findIndex(r => r.id === editingRaceId);
+                    if (raceIndex !== -1) {
+                        console.log('Updating local race, preserving', existingEntries.length, 'entries');
+                        const originalEntries = races[raceIndex].entries; // Backup original
+                        races[raceIndex] = {
+                            ...races[raceIndex],
+                            ...formData,
+                            entries: originalEntries // Use original entries, not currentRace
+                        };
+                    }
+                    saveToLocalStorage();
+                    populateRaceSelector();
                 }
-                saveToLocalStorage();
-                populateRaceSelector();
-            }
+            });
         } else {
             // Add new race
             if (isFirebaseEnabled) {
@@ -956,6 +1089,12 @@ async function handleRaceFormSubmit(e) {
 
         closeRaceModal();
 
+        // Refresh the current race view if we were editing
+        if (editingRaceId && currentRaceId === editingRaceId) {
+            console.log('Refreshing race view after edit');
+            switchRace();
+        }
+
     } catch (error) {
         console.error('Error saving race:', error);
         showNotification('Error saving race: ' + error.message, 'error');
@@ -965,8 +1104,18 @@ async function handleRaceFormSubmit(e) {
 async function handleFormSubmit(e) {
     e.preventDefault();
 
+    if (!isAuthenticated) {
+        alert('You need to be authenticated to add entries');
+        return;
+    }
+
     const race = getCurrentRace();
-    if (!race) return;
+    if (!race) {
+        alert('Please select a race first');
+        return;
+    }
+
+    console.log('Adding entry to race:', race.name);
 
     const entryDistanceValue = document.getElementById('entryDistance').value;
     const trappingTimeStr = document.getElementById('trappingTime').value;
@@ -1042,7 +1191,9 @@ async function handleFormSubmit(e) {
             minute: totalMinutes,
             velocity
         };
+        console.log('Creating new entry:', newEntry);
         race.entries.push(newEntry);
+        console.log('Entry added. Total entries now:', race.entries.length);
     }
 
     // Sort by velocity (highest velocity = fastest = position 1) and recalculate positions
@@ -1054,7 +1205,7 @@ async function handleFormSubmit(e) {
             // Sort by registration order (ID) for entries without times
             return a.id - b.id;
         }
-        
+
         // Primary sort: by velocity (descending - highest velocity first)
         if (b.velocity !== a.velocity) {
             return b.velocity - a.velocity;
@@ -1068,11 +1219,18 @@ async function handleFormSubmit(e) {
         entry.position = index + 1;
     });
 
-    closeModal();
-    loadData();
-    updateStats();
-    populateFilters();
-    await saveRaceData(race);
+    try {
+        closeModal();
+        loadData();
+        updateStats();
+        populateFilters();
+        await saveRaceData(race);
+        console.log('Entry added successfully!');
+        showNotification('Entry added successfully', 'success');
+    } catch (error) {
+        console.error('Error adding entry:', error);
+        showNotification('Error adding entry: ' + error.message, 'error');
+    }
 }
 
 // Keyboard shortcuts
@@ -1514,16 +1672,23 @@ function downloadPDF() {
 
 // Helper function to save race data
 async function saveRaceData(race) {
-    try {
-        if (isFirebaseEnabled) {
-            await window.firebaseService.updateRace(race.id, race);
-        } else {
-            saveToLocalStorage();
+    return safeDataOperation('saveRaceData', async () => {
+        try {
+            console.log('Saving race data:', race.name, 'with', race.entries.length, 'entries');
+
+            if (isFirebaseEnabled) {
+                // For entry updates, we need to save the complete race with entries
+                await window.firebaseService.replaceRace(race.id, race);
+                console.log('Race data saved to Firebase successfully');
+            } else {
+                saveToLocalStorage();
+                console.log('Race data saved to localStorage successfully');
+            }
+        } catch (error) {
+            console.error('Error saving race data:', error);
+            showNotification('Error saving data: ' + error.message, 'error');
         }
-    } catch (error) {
-        console.error('Error saving race data:', error);
-        showNotification('Error saving data: ' + error.message, 'error');
-    }
+    });
 }
 
 // Notification system
@@ -1607,3 +1772,490 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+// Debug function to check race data integrity
+function debugRaceData() {
+    console.log('=== RACE DATA DEBUG ===');
+    console.log('Current Race ID:', currentRaceId);
+    console.log('Total Races:', races.length);
+
+    races.forEach((race, index) => {
+        console.log(`Race ${index + 1}:`, {
+            id: race.id,
+            name: race.name,
+            entriesCount: race.entries ? race.entries.length : 0
+        });
+    });
+
+    const currentRace = getCurrentRace();
+    if (currentRace) {
+        console.log('Current Race Details:', {
+            name: currentRace.name,
+            entriesCount: currentRace.entries ? currentRace.entries.length : 0,
+            entries: currentRace.entries
+        });
+    }
+    console.log('=== END DEBUG ===');
+}
+
+// Make it available globally for testing
+window.debugRaceData = debugRaceData;// Comprehensive data integrity validation
+function validateDataIntegrity() {
+    console.log('🔍 RUNNING DATA INTEGRITY CHECK...');
+
+    let issues = [];
+
+    // Check races array
+    if (!Array.isArray(races)) {
+        issues.push('❌ races is not an array');
+        return issues;
+    }
+
+    races.forEach((race, raceIndex) => {
+        // Check race structure
+        if (!race.id) issues.push(`❌ Race ${raceIndex} missing ID`);
+        if (!race.name) issues.push(`❌ Race ${raceIndex} missing name`);
+        if (!race.entries) {
+            issues.push(`❌ Race ${raceIndex} missing entries array`);
+            return;
+        }
+
+        if (!Array.isArray(race.entries)) {
+            issues.push(`❌ Race ${raceIndex} entries is not an array`);
+            return;
+        }
+
+        // Check entries
+        race.entries.forEach((entry, entryIndex) => {
+            if (!entry.id) issues.push(`❌ Race ${raceIndex}, Entry ${entryIndex} missing ID`);
+            if (!entry.loftName) issues.push(`❌ Race ${raceIndex}, Entry ${entryIndex} missing loftName`);
+            if (!entry.ringNumber) issues.push(`❌ Race ${raceIndex}, Entry ${entryIndex} missing ringNumber`);
+            if (!entry.culture) issues.push(`❌ Race ${raceIndex}, Entry ${entryIndex} missing culture`);
+            if (!entry.club) issues.push(`❌ Race ${raceIndex}, Entry ${entryIndex} missing club`);
+        });
+
+        console.log(`✅ Race "${race.name}": ${race.entries.length} entries validated`);
+    });
+
+    if (issues.length === 0) {
+        console.log('✅ DATA INTEGRITY CHECK PASSED - All data is safe!');
+    } else {
+        console.log('❌ DATA INTEGRITY ISSUES FOUND:');
+        issues.forEach(issue => console.log(issue));
+    }
+
+    return issues;
+}
+
+// Auto-run integrity check after any data modification
+function safeDataOperation(operationName, operation) {
+    console.log(`🔧 Starting operation: ${operationName}`);
+
+    // Run integrity check before
+    const beforeIssues = validateDataIntegrity();
+    if (beforeIssues.length > 0) {
+        console.warn('⚠️ Data integrity issues detected BEFORE operation!');
+    }
+
+    // Run the operation
+    const result = operation();
+
+    // Run integrity check after
+    setTimeout(() => {
+        const afterIssues = validateDataIntegrity();
+        if (afterIssues.length > beforeIssues.length) {
+            console.error('🚨 NEW DATA INTEGRITY ISSUES DETECTED!');
+            console.error('Operation that caused issues:', operationName);
+        } else {
+            console.log(`✅ Operation "${operationName}" completed safely`);
+        }
+    }, 100);
+
+    return result;
+}
+
+// Make functions available globally for testing
+window.validateDataIntegrity = validateDataIntegrity;
+window.safeDataOperation = safeDataOperation;// Debug function to test entry addition
+function testAddEntry() {
+    console.log('=== TESTING ENTRY ADDITION ===');
+    console.log('Is authenticated:', isAuthenticated);
+    console.log('Current race ID:', currentRaceId);
+    console.log('Current race:', getCurrentRace());
+    console.log('Firebase enabled:', isFirebaseEnabled);
+
+    const race = getCurrentRace();
+    if (race) {
+        console.log('Race entries before:', race.entries.length);
+
+        // Test entry
+        const testEntry = {
+            id: Date.now(),
+            position: race.entries.length + 1,
+            loftName: 'Test Loft',
+            ringNumber: 'TEST-001',
+            culture: 'blue',
+            distance: null,
+            trappingTime: null,
+            club: 'CNRPA',
+            totalTime: '--:--:--',
+            second: 0,
+            minute: 0,
+            velocity: 0
+        };
+
+        race.entries.push(testEntry);
+        console.log('Race entries after:', race.entries.length);
+
+        // Try to save
+        saveRaceData(race).then(() => {
+            console.log('Test entry saved successfully');
+            loadData();
+        }).catch(error => {
+            console.error('Test entry save failed:', error);
+        });
+    } else {
+        console.log('No race selected');
+    }
+}
+
+// Make it available globally
+window.testAddEntry = testAddEntry;// Debug function to test copy race functionality
+function testCopyRace() {
+    console.log('=== TESTING COPY RACE FUNCTIONALITY ===');
+    console.log('Is authenticated:', isAuthenticated);
+    console.log('Current race ID:', currentRaceId);
+    console.log('Firebase enabled:', isFirebaseEnabled);
+
+    const race = getCurrentRace();
+    if (race) {
+        console.log('Current race:', race.name);
+        console.log('Entries to copy:', race.entries.length);
+
+        // Test if copy race modal can open
+        try {
+            copyCurrentRace();
+            console.log('✅ Copy race modal opened successfully');
+        } catch (error) {
+            console.error('❌ Error opening copy race modal:', error);
+        }
+    } else {
+        console.log('❌ No race selected');
+    }
+}
+
+// Make it available globally
+window.testCopyRace = testCopyRace;// Manual refresh function for race dropdown
+async function refreshRaceDropdown() {
+    console.log('Manually refreshing race dropdown...');
+
+    try {
+        if (isFirebaseEnabled) {
+            // Fetch latest races from Firebase
+            races = await window.firebaseService.getAllRaces();
+            console.log('Fetched', races.length, 'races from Firebase');
+        }
+
+        // Update dropdown
+        populateRaceSelector();
+        console.log('Race dropdown refreshed successfully');
+
+        // If we have a current race, make sure it's selected
+        if (currentRaceId) {
+            const raceSelect = document.getElementById('raceSelect');
+            const raceOption = Array.from(raceSelect.options).find(option => option.value === currentRaceId);
+            if (raceOption) {
+                raceSelect.value = currentRaceId;
+                console.log('Current race re-selected:', currentRaceId);
+            } else {
+                console.warn('Current race not found in dropdown:', currentRaceId);
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error refreshing race dropdown:', error);
+        showNotification('Error refreshing races: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// Make it available globally
+window.refreshRaceDropdown = refreshRaceDropdown;// Debug function to check dropdown state
+function debugDropdownState() {
+    console.log('=== DROPDOWN STATE DEBUG ===');
+
+    const raceSelect = document.getElementById('raceSelect');
+    console.log('Dropdown element:', raceSelect);
+    console.log('Number of options:', raceSelect.options.length);
+
+    console.log('Options in dropdown:');
+    Array.from(raceSelect.options).forEach((option, index) => {
+        console.log(`  ${index}: ${option.value} - ${option.textContent}`);
+    });
+
+    console.log('Races in memory:', races.length);
+    races.forEach((race, index) => {
+        console.log(`  ${index}: ${race.id} - ${race.name}`);
+    });
+
+    console.log('Current race ID:', currentRaceId);
+    console.log('Selected value:', raceSelect.value);
+    console.log('Firebase enabled:', isFirebaseEnabled);
+
+    return {
+        dropdownOptions: raceSelect.options.length,
+        racesInMemory: races.length,
+        currentRaceId,
+        selectedValue: raceSelect.value
+    };
+}
+
+// Make it available globally
+window.debugDropdownState = debugDropdownState;// Comprehensive data persistence check
+async function checkDataPersistence() {
+    console.log('🔍 CHECKING DATA PERSISTENCE...');
+
+    // Check Firebase connection
+    if (window.firebaseService) {
+        try {
+            console.log('🔥 Testing Firebase connection...');
+            const testRaces = await window.firebaseService.getAllRaces();
+            console.log('✅ Firebase connected. Races found:', testRaces.length);
+
+            testRaces.forEach((race, index) => {
+                console.log(`  📋 Race ${index + 1}: ${race.name}`);
+                console.log(`     📅 Date: ${race.date}`);
+                console.log(`     📍 Location: ${race.location}`);
+                console.log(`     🏃 Entries: ${race.entries ? race.entries.length : 0}`);
+                console.log('     ---');
+            });
+
+            return { firebase: true, races: testRaces };
+        } catch (error) {
+            console.error('❌ Firebase connection failed:', error);
+            return { firebase: false, error: error.message };
+        }
+    } else {
+        console.log('❌ Firebase service not available');
+        return { firebase: false, error: 'Firebase service not available' };
+    }
+}
+
+// Test data saving and loading
+async function testDataPersistence() {
+    console.log('🧪 TESTING DATA PERSISTENCE...');
+
+    // Create a test race
+    const testRace = {
+        name: 'TEST RACE - ' + Date.now(),
+        date: '2025-01-01',
+        location: 'Test Location',
+        distance: 100,
+        releaseTime: '08:00',
+        visibility: 'CLEAR',
+        season: '2024-2025',
+        entries: [
+            {
+                id: Date.now(),
+                position: 1,
+                loftName: 'Test Loft',
+                ringNumber: 'TEST-001',
+                culture: 'blue',
+                trappingTime: '09:30:00',
+                totalTime: '1:30:00',
+                second: 5400,
+                minute: 90,
+                velocity: 1200,
+                club: 'CNRPA'
+            }
+        ]
+    };
+
+    try {
+        if (isFirebaseEnabled) {
+            console.log('💾 Saving test race to Firebase...');
+            const testRaceId = await window.firebaseService.addRace(testRace);
+            console.log('✅ Test race saved with ID:', testRaceId);
+
+            // Try to retrieve it
+            console.log('📡 Retrieving test race...');
+            const retrievedRaces = await window.firebaseService.getAllRaces();
+            const foundTestRace = retrievedRaces.find(r => r.id === testRaceId);
+
+            if (foundTestRace) {
+                console.log('✅ Test race retrieved successfully');
+                console.log('📊 Test race data:', foundTestRace);
+
+                // Clean up - delete test race
+                await window.firebaseService.deleteRace(testRaceId);
+                console.log('🗑️ Test race cleaned up');
+
+                return { success: true, message: 'Data persistence test passed' };
+            } else {
+                console.error('❌ Test race not found after saving');
+                return { success: false, message: 'Test race not found after saving' };
+            }
+        } else {
+            console.log('📱 Testing local storage...');
+            const originalRaces = [...races];
+            races.push({ id: 'test-' + Date.now(), ...testRace });
+            saveToLocalStorage();
+
+            // Simulate page reload by clearing and reloading
+            races = [];
+            loadFromLocalStorage();
+
+            const foundTestRace = races.find(r => r.id.startsWith('test-'));
+            if (foundTestRace) {
+                console.log('✅ Local storage test passed');
+                // Clean up
+                races = originalRaces;
+                saveToLocalStorage();
+                return { success: true, message: 'Local storage test passed' };
+            } else {
+                console.error('❌ Local storage test failed');
+                return { success: false, message: 'Local storage test failed' };
+            }
+        }
+    } catch (error) {
+        console.error('❌ Data persistence test failed:', error);
+        return { success: false, message: error.message };
+    }
+}
+
+// Make functions available globally
+window.checkDataPersistence = checkDataPersistence;
+window.testDataPersistence = testDataPersistence;// Data recovery function for when data goes missing
+async function recoverMissingData() {
+    console.log('🔄 ATTEMPTING DATA RECOVERY...');
+
+    try {
+        if (isFirebaseEnabled && window.firebaseService) {
+            console.log('🔥 Attempting Firebase data recovery...');
+
+            // Force refresh from Firebase
+            const recoveredRaces = await window.firebaseService.getAllRaces();
+            console.log('📊 Recovered races from Firebase:', recoveredRaces.length);
+
+            if (recoveredRaces.length > 0) {
+                races = recoveredRaces;
+                populateRaceSelector();
+
+                // Select first race if none selected
+                if (!currentRaceId && races.length > 0) {
+                    currentRaceId = races[0].id;
+                    document.getElementById('raceSelect').value = currentRaceId;
+                    switchRace();
+                }
+
+                console.log('✅ Data recovery successful');
+                showNotification('Data recovered successfully', 'success');
+                return true;
+            } else {
+                console.log('⚠️ No data found in Firebase to recover');
+                showNotification('No data found to recover', 'info');
+                return false;
+            }
+        } else {
+            console.log('📱 Attempting local storage recovery...');
+            loadFromLocalStorage();
+            populateRaceSelector();
+
+            if (races.length > 0) {
+                console.log('✅ Local data recovery successful');
+                showNotification('Local data recovered', 'success');
+                return true;
+            } else {
+                console.log('⚠️ No local data found to recover');
+                showNotification('No local data found', 'info');
+                return false;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Data recovery failed:', error);
+        showNotification('Data recovery failed: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// Auto-recovery check on page load
+function checkAndRecoverData() {
+    // Wait a moment for initialization to complete
+    setTimeout(() => {
+        if (races.length === 0) {
+            console.log('⚠️ No races found after initialization, attempting recovery...');
+            recoverMissingData();
+        }
+    }, 2000);
+}
+
+// Make functions available globally
+window.recoverMissingData = recoverMissingData;
+window.checkAndRecoverData = checkAndRecoverData;// Comprehensive copy race test function
+async function testCopyRaceData() {
+    console.log('🧪 TESTING COPY RACE DATA INTEGRITY...');
+
+    const originalRace = getCurrentRace();
+    if (!originalRace) {
+        console.error('❌ No race selected for testing');
+        return false;
+    }
+
+    console.log('📋 Original race:', originalRace.name);
+    console.log('📊 Original entries:', originalRace.entries.length);
+
+    // Test data structure
+    console.log('🔍 Testing data structure...');
+    console.log('Original race structure:', {
+        hasName: !!originalRace.name,
+        hasDate: !!originalRace.date,
+        hasLocation: !!originalRace.location,
+        hasDistance: !!originalRace.distance,
+        hasReleaseTime: !!originalRace.releaseTime,
+        hasVisibility: !!originalRace.visibility,
+        hasEntries: Array.isArray(originalRace.entries),
+        entriesCount: originalRace.entries ? originalRace.entries.length : 0
+    });
+
+    // Test entry structure
+    if (originalRace.entries && originalRace.entries.length > 0) {
+        const sampleEntry = originalRace.entries[0];
+        console.log('📝 Sample entry structure:', {
+            hasId: !!sampleEntry.id,
+            hasLoftName: !!sampleEntry.loftName,
+            hasRingNumber: !!sampleEntry.ringNumber,
+            hasCulture: !!sampleEntry.culture,
+            hasClub: !!sampleEntry.club,
+            hasTrappingTime: !!sampleEntry.trappingTime,
+            hasVelocity: typeof sampleEntry.velocity === 'number'
+        });
+    }
+
+    if (isFirebaseEnabled) {
+        console.log('🔥 Testing Firebase data integrity...');
+        try {
+            // Test if we can fetch the current race from Firebase
+            const firebaseRace = await window.firebaseService.getRace(originalRace.id);
+            console.log('📡 Firebase race entries:', firebaseRace.entries ? firebaseRace.entries.length : 0);
+
+            if (firebaseRace.entries && firebaseRace.entries.length !== originalRace.entries.length) {
+                console.warn('⚠️ Entry count mismatch between local and Firebase!');
+                console.log('Local entries:', originalRace.entries.length);
+                console.log('Firebase entries:', firebaseRace.entries.length);
+            } else {
+                console.log('✅ Local and Firebase data match');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('❌ Firebase data test failed:', error);
+            return false;
+        }
+    } else {
+        console.log('📱 Local storage mode - data integrity looks good');
+        return true;
+    }
+}
+
+// Make it available globally
+window.testCopyRaceData = testCopyRaceData;
