@@ -43,6 +43,9 @@ async function initializeApp() {
 
     // Check for stored authentication
     checkStoredAuth();
+    
+    // Ensure UI permissions are set correctly on load
+    updateUIPermissions();
 
     try {
         // Try to initialize Firebase
@@ -270,13 +273,15 @@ function updateUIPermissions() {
     const raceBtn = document.querySelector('.race-btn');
     const actionsHeader = document.querySelector('.actions-header');
 
+    console.log('Updating UI permissions. isAuthenticated:', isAuthenticated);
+
     if (isAuthenticated) {
         editButtons.forEach(btn => btn.style.display = 'inline-block');
-        raceBtn.style.display = 'inline-block';
+        if (raceBtn) raceBtn.style.display = 'inline-block';
         if (actionsHeader) actionsHeader.style.display = 'table-cell';
     } else {
         editButtons.forEach(btn => btn.style.display = 'none');
-        raceBtn.style.display = 'none';
+        if (raceBtn) raceBtn.style.display = 'none';
         if (actionsHeader) actionsHeader.style.display = 'none';
     }
 
@@ -394,11 +399,11 @@ function renderTable(data) {
             <td style="text-align: center;"><span class="culture-badge culture-${entry.culture}">${entry.culture}</span></td>
             <td style="text-align: center;">${entryDistance}</td>
             <td style="text-align: center;">${race ? race.releaseTime : 'N/A'}</td>
-            <td style="text-align: center;">${entry.trappingTime}</td>
-            <td style="text-align: center;"><strong>${entry.totalTime}</strong></td>
+            <td style="text-align: center;">${entry.trappingTime || '<span style="color: #a0aec0; font-style: italic;">Pending</span>'}</td>
+            <td style="text-align: center;"><strong>${entry.totalTime || '--:--:--'}</strong></td>
             <td style="text-align: center;">${entry.second || 0}</td>
             <td style="text-align: center;">${entry.minute || 0}</td>
-            <td style="text-align: center;">${entry.velocity.toFixed(4)}</td>
+            <td style="text-align: center;">${entry.velocity ? entry.velocity.toFixed(4) : '<span style="color: #a0aec0;">--</span>'}</td>
             <td style="text-align: center;"><span class="club-badge">${entry.club}</span></td>
         `;
 
@@ -536,6 +541,9 @@ function switchRace() {
         loadData();
         updateStats();
         populateFilters();
+        
+        // Show culture legend
+        document.getElementById('cultureLegend').style.display = 'block';
     } else {
         currentRaceId = null;
         document.getElementById('currentRaceInfo').textContent = 'Select a race to view';
@@ -549,6 +557,9 @@ function switchRace() {
         // Clear table
         document.getElementById('tableBody').innerHTML = '';
         updateStats();
+        
+        // Hide culture legend
+        document.getElementById('cultureLegend').style.display = 'none';
     }
 }
 
@@ -602,6 +613,11 @@ function filterTable() {
 }
 
 function openRaceModal() {
+    if (!isAuthenticated) {
+        alert('You need to be authenticated to create races');
+        return;
+    }
+    
     editingRaceId = null;
     document.getElementById('raceModalTitle').textContent = 'Create New Race';
     document.getElementById('raceForm').reset();
@@ -749,6 +765,11 @@ async function handleCopyRaceFormSubmit(e) {
 
         // Sort by velocity and update positions
         copiedEntries.sort((a, b) => {
+            // Entries without trapping time go to the end
+            if (!a.trappingTime && b.trappingTime) return 1;
+            if (a.trappingTime && !b.trappingTime) return -1;
+            if (!a.trappingTime && !b.trappingTime) return a.id - b.id;
+            
             if (b.velocity !== a.velocity) {
                 return b.velocity - a.velocity;
             }
@@ -843,6 +864,11 @@ async function deleteEntry(id) {
 
         // Re-sort by velocity and recalculate positions
         race.entries.sort((a, b) => {
+            // Entries without trapping time go to the end
+            if (!a.trappingTime && b.trappingTime) return 1;
+            if (a.trappingTime && !b.trappingTime) return -1;
+            if (!a.trappingTime && !b.trappingTime) return a.id - b.id;
+            
             if (b.velocity !== a.velocity) {
                 return b.velocity - a.velocity;
             }
@@ -867,6 +893,11 @@ function closeModal() {
 
 async function handleRaceFormSubmit(e) {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+        alert('You need to be authenticated to create or edit races');
+        return;
+    }
 
     const formData = {
         name: document.getElementById('raceName').value,
@@ -940,46 +971,52 @@ async function handleFormSubmit(e) {
     const entryDistanceValue = document.getElementById('entryDistance').value;
     const trappingTimeStr = document.getElementById('trappingTime').value;
 
-    if (!trappingTimeStr) {
-        alert('Please enter the trapping time');
-        return;
-    }
-
     const formData = {
         loftName: document.getElementById('loftName').value,
         ringNumber: document.getElementById('ringNumber').value,
         culture: document.getElementById('culture').value,
         distance: entryDistanceValue ? parseFloat(entryDistanceValue) : null,
-        trappingTime: trappingTimeStr,
+        trappingTime: trappingTimeStr || null,
         club: document.getElementById('club').value
     };
 
-    // Use entry-specific distance or fall back to race distance
-    const distanceToUse = formData.distance || race.distance;
+    // Initialize default values for entries without trapping time
+    let totalTime = '--:--:--';
+    let totalSeconds = 0;
+    let totalMinutes = 0;
+    let velocity = 0;
 
-    // Calculate total time and velocity using race data with seconds precision
-    const releaseTime = new Date(`${race.date} ${race.releaseTime}:00`);
-    const trappingTime = new Date(`${race.date} ${trappingTimeStr}`);
-    const timeDiff = trappingTime - releaseTime;
+    // Only calculate times if trapping time is provided
+    if (trappingTimeStr) {
+        // Use entry-specific distance or fall back to race distance
+        const distanceToUse = formData.distance || race.distance;
 
-    if (timeDiff <= 0) {
-        alert('Trapping time must be after release time');
-        return;
+        // Calculate total time and velocity using race data with seconds precision
+        const releaseTime = new Date(`${race.date} ${race.releaseTime}:00`);
+        const trappingTime = new Date(`${race.date} ${trappingTimeStr}`);
+        const timeDiff = trappingTime - releaseTime;
+
+        if (timeDiff <= 0) {
+            alert('Trapping time must be after release time');
+            return;
+        }
+
+        const hours = Math.floor(timeDiff / (1000 * 60 * 60));
+        const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+
+        totalTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        totalSeconds = Math.floor(timeDiff / 1000);
+        totalMinutes = Math.floor(timeDiff / (1000 * 60));
+
+        // Calculate velocity with precise timing (distance in km / time in hours)
+        // Convert to YPM (Yards Per Minute) - 1 km = 1093.61 yards
+        const timeInHours = timeDiff / (1000 * 60 * 60);
+        const velocityKmH = distanceToUse / timeInHours;
+        velocity = velocityKmH * 18.2269; // Convert km/h to YPM (1 km/h = 18.2269 YPM)
     }
 
-    const hours = Math.floor(timeDiff / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
 
-    const totalTime = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    const totalSeconds = Math.floor(timeDiff / 1000);
-    const totalMinutes = Math.floor(timeDiff / (1000 * 60));
-
-    // Calculate velocity with precise timing (distance in km / time in hours)
-    // Convert to YPM (Yards Per Minute) - 1 km = 1093.61 yards
-    const timeInHours = timeDiff / (1000 * 60 * 60);
-    const velocityKmH = distanceToUse / timeInHours;
-    const velocity = velocityKmH * 18.2269; // Convert km/h to YPM (1 km/h = 18.2269 YPM)
 
     if (editingId) {
         // Update existing entry
@@ -1010,6 +1047,14 @@ async function handleFormSubmit(e) {
 
     // Sort by velocity (highest velocity = fastest = position 1) and recalculate positions
     race.entries.sort((a, b) => {
+        // Entries without trapping time go to the end
+        if (!a.trappingTime && b.trappingTime) return 1;
+        if (a.trappingTime && !b.trappingTime) return -1;
+        if (!a.trappingTime && !b.trappingTime) {
+            // Sort by registration order (ID) for entries without times
+            return a.id - b.id;
+        }
+        
         // Primary sort: by velocity (descending - highest velocity first)
         if (b.velocity !== a.velocity) {
             return b.velocity - a.velocity;
