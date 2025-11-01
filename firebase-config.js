@@ -1,12 +1,12 @@
 // Firebase Configuration
 // Replace these values with your actual Firebase project configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyB-FKTO78_B8ed6u5vYc3Tx9WX-iSU_AAc",
-  authDomain: "pegion-tracker.firebaseapp.com",
-  projectId: "pegion-tracker",
-  storageBucket: "pegion-tracker.firebasestorage.app",
-  messagingSenderId: "670292019665",
-  appId: "1:670292019665:web:c4789a76cc2365412138f0"
+    apiKey: "AIzaSyB-FKTO78_B8ed6u5vYc3Tx9WX-iSU_AAc",
+    authDomain: "pegion-tracker.firebaseapp.com",
+    projectId: "pegion-tracker",
+    storageBucket: "pegion-tracker.firebasestorage.app",
+    messagingSenderId: "670292019665",
+    appId: "1:670292019665:web:c4789a76cc2365412138f0"
 };
 
 // Initialize Firebase
