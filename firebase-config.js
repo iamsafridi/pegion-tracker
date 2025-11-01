@@ -43,28 +43,55 @@ class FirebaseService {
     // Add a new race
     async addRace(raceData) {
         try {
+            console.log('🔥 Firebase addRace called with data:', {
+                name: raceData.name,
+                entriesCount: raceData.entries ? raceData.entries.length : 0,
+                hasEntries: Array.isArray(raceData.entries),
+                dataKeys: Object.keys(raceData)
+            });
+            
             const docRef = await this.db.collection(this.racesCollection).add({
                 ...raceData,
                 createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
+            
+            console.log('✅ Race added to Firebase with ID:', docRef.id);
             return docRef.id;
         } catch (error) {
-            console.error('Error adding race:', error);
+            console.error('❌ Error adding race to Firebase:', error);
             throw error;
         }
     }
 
-    // Update a race
+    // Update a race (metadata only - preserves entries)
     async updateRace(raceId, raceData) {
         try {
+            // Ensure we don't accidentally overwrite entries
+            const safeData = { ...raceData };
+            delete safeData.entries;
+
             await this.db.collection(this.racesCollection).doc(raceId).update({
-                ...raceData,
+                ...safeData,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
             return true;
         } catch (error) {
             console.error('Error updating race:', error);
+            throw error;
+        }
+    }
+
+    // Replace entire race document (use with caution)
+    async replaceRace(raceId, completeRaceData) {
+        try {
+            await this.db.collection(this.racesCollection).doc(raceId).set({
+                ...completeRaceData,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            return true;
+        } catch (error) {
+            console.error('Error replacing race:', error);
             throw error;
         }
     }
