@@ -1596,7 +1596,7 @@ function downloadPDF() {
                             data.cell.styles.fillColor = [254, 215, 215];
                             data.cell.styles.textColor = [197, 48, 48];
                             break;
-                        case 'chek':
+                        case 'rchek':
                             data.cell.styles.fillColor = [254, 245, 231];
                             data.cell.styles.textColor = [214, 158, 46];
                             break;
