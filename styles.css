@@ -795,14 +795,14 @@ body {
     font-size: 10px;
 }
 
-/* Chek Culture - Golden Yellow */
-.culture-chek {
+/* RChek Culture - Golden Yellow */
+.culture-rchek {
     background: linear-gradient(135deg, #d69e2e, #b7791f);
     color: #ffffff;
     border-color: #b7791f;
 }
 
-.culture-chek::before {
+.culture-rchek::before {
     content: "🟡";
     font-size: 10px;
 }
