@@ -1362,7 +1362,7 @@ function loadFromLocalStorage() {
                             position: 2,
                             loftName: "rajib a samad loft",
                             ringNumber: "24-52305-c",
-                            culture: "cheq",
+                            culture: "rchek",
                             trappingTime: "08:56:53",
                             totalTime: "0:51:53",
                             second: 3113,
@@ -1596,7 +1596,7 @@ function downloadPDF() {
                             data.cell.styles.fillColor = [254, 215, 215];
                             data.cell.styles.textColor = [197, 48, 48];
                             break;
-                        case 'chek':
+                        case 'rchek':
                             data.cell.styles.fillColor = [254, 245, 231];
                             data.cell.styles.textColor = [214, 158, 46];
                             break;
