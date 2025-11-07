@@ -2259,3 +2259,241 @@ async function testCopyRaceData() {
 
 // Make it available globally
 window.testCopyRaceData = testCopyRaceData;
+
+// Ring Search Functionality
+function openRingSearchModal() {
+    document.getElementById('ringSearchModal').style.display = 'block';
+    document.getElementById('ringSearchInput').focus();
+    
+    // Clear previous results
+    document.getElementById('ringSearchResults').innerHTML = `
+        <div class="ring-search-empty">
+            <i class="fas fa-search"></i>
+            <p>Enter a ring number to search</p>
+            <small>Search across all races to see complete pigeon history</small>
+        </div>
+    `;
+}
+
+function closeRingSearchModal() {
+    document.getElementById('ringSearchModal').style.display = 'none';
+    document.getElementById('ringSearchInput').value = '';
+}
+
+function searchRingNumber() {
+    const ringNumber = document.getElementById('ringSearchInput').value.trim().toLowerCase();
+    
+    if (!ringNumber) {
+        showNotification('Please enter a ring number', 'warning');
+        return;
+    }
+    
+    console.log('Searching for ring number:', ringNumber);
+    
+    // Search across all races
+    const results = [];
+    
+    races.forEach(race => {
+        if (race.entries && Array.isArray(race.entries)) {
+            race.entries.forEach(entry => {
+                if (entry.ringNumber && entry.ringNumber.toLowerCase().includes(ringNumber)) {
+                    results.push({
+                        ...entry,
+                        raceName: race.name,
+                        raceDate: race.date,
+                        raceLocation: race.location,
+                        raceDistance: entry.distance || race.distance,
+                        raceSeason: race.season
+                    });
+                }
+            });
+        }
+    });
+    
+    console.log('Search results:', results.length);
+    
+    displayRingSearchResults(results, ringNumber);
+}
+
+function displayRingSearchResults(results, searchTerm) {
+    const resultsContainer = document.getElementById('ringSearchResults');
+    
+    if (results.length === 0) {
+        resultsContainer.innerHTML = `
+            <div class="no-results">
+                <i class="fas fa-search" style="font-size: 48px; margin-bottom: 15px; opacity: 0.3;"></i>
+                <p>No pigeon found with ring number: <strong>${searchTerm}</strong></p>
+                <small>Try searching with a different ring number</small>
+            </div>
+        `;
+        return;
+    }
+    
+    // Group results by ring number (in case of partial matches)
+    const groupedResults = {};
+    results.forEach(result => {
+        const ringKey = result.ringNumber.toLowerCase();
+        if (!groupedResults[ringKey]) {
+            groupedResults[ringKey] = [];
+        }
+        groupedResults[ringKey].push(result);
+    });
+    
+    // Display results for each unique ring number
+    let html = '';
+    
+    Object.keys(groupedResults).forEach(ringKey => {
+        const pigeonResults = groupedResults[ringKey];
+        const firstResult = pigeonResults[0];
+        
+        // Calculate statistics
+        const totalRaces = pigeonResults.length;
+        const completedRaces = pigeonResults.filter(r => r.trappingTime).length;
+        const top3Finishes = pigeonResults.filter(r => r.position <= 3).length;
+        const top10Finishes = pigeonResults.filter(r => r.position <= 10).length;
+        
+        // Calculate average position (only for completed races)
+        const completedPositions = pigeonResults.filter(r => r.trappingTime).map(r => r.position);
+        const avgPosition = completedPositions.length > 0 
+            ? (completedPositions.reduce((a, b) => a + b, 0) / completedPositions.length).toFixed(1)
+            : 'N/A';
+        
+        // Calculate average velocity
+        const velocities = pigeonResults.filter(r => r.velocity > 0).map(r => r.velocity);
+        const avgVelocity = velocities.length > 0
+            ? (velocities.reduce((a, b) => a + b, 0) / velocities.length).toFixed(2)
+            : 'N/A';
+        
+        // Best position
+        const bestPosition = completedPositions.length > 0 ? Math.min(...completedPositions) : 'N/A';
+        
+        html += `
+            <div class="pigeon-summary">
+                <h3>
+                    <i class="fas fa-dove"></i>
+                    Ring Number: ${firstResult.ringNumber}
+                </h3>
+                <div class="pigeon-stats-grid">
+                    <div class="pigeon-stat-item">
+                        <div class="label">Loft Name</div>
+                        <div class="value" style="font-size: 18px;">${firstResult.loftName}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Culture</div>
+                        <div class="value" style="font-size: 18px;">
+                            <span class="culture-badge culture-${firstResult.culture}">${firstResult.culture}</span>
+                        </div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Total Races</div>
+                        <div class="value">${totalRaces}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Completed</div>
+                        <div class="value">${completedRaces}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Best Position</div>
+                        <div class="value">${bestPosition}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Avg Position</div>
+                        <div class="value">${avgPosition}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Top 3 Finishes</div>
+                        <div class="value">${top3Finishes}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Top 10 Finishes</div>
+                        <div class="value">${top10Finishes}</div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Avg Velocity</div>
+                        <div class="value">${avgVelocity} <small style="font-size: 12px;">YPM</small></div>
+                    </div>
+                    <div class="pigeon-stat-item">
+                        <div class="label">Club</div>
+                        <div class="value" style="font-size: 18px;">${firstResult.club}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="race-history-section">
+                <h4><i class="fas fa-history"></i> Race History</h4>
+                <table class="race-history-table">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Race Name</th>
+                            <th>Date</th>
+                            <th>Location</th>
+                            <th>Distance (KM)</th>
+                            <th>Trapping Time</th>
+                            <th>Total Time</th>
+                            <th>Velocity (YPM)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+        
+        // Sort by date (most recent first)
+        pigeonResults.sort((a, b) => new Date(b.raceDate) - new Date(a.raceDate));
+        
+        pigeonResults.forEach(result => {
+            const positionClass = result.position === 1 ? 'gold' : 
+                                 result.position === 2 ? 'silver' :
+                                 result.position === 3 ? 'bronze' :
+                                 result.position <= 10 ? 'top10' : 'other';
+            
+            const formattedDate = new Date(result.raceDate).toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+            
+            html += `
+                <tr>
+                    <td>
+                        <span class="position-badge ${positionClass}">${result.position}</span>
+                    </td>
+                    <td><strong>${result.raceName}</strong></td>
+                    <td>${formattedDate}</td>
+                    <td>${result.raceLocation}</td>
+                    <td>${result.raceDistance}</td>
+                    <td>${result.trappingTime || '<span style="color: #a0aec0; font-style: italic;">Pending</span>'}</td>
+                    <td><strong>${result.totalTime || '--:--:--'}</strong></td>
+                    <td><span class="velocity-highlight">${result.velocity ? result.velocity.toFixed(4) : '--'}</span></td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+    });
+    
+    resultsContainer.innerHTML = html;
+    showNotification(`Found ${results.length} race(s) for this pigeon`, 'success');
+}
+
+// Add Enter key support for ring search
+document.addEventListener('DOMContentLoaded', function() {
+    const ringSearchInput = document.getElementById('ringSearchInput');
+    if (ringSearchInput) {
+        ringSearchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchRingNumber();
+            }
+        });
+    }
+    
+    // Close modal on outside click
+    document.getElementById('ringSearchModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeRingSearchModal();
+        }
+    });
+});
