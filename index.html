@@ -182,6 +182,9 @@
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Search by loft name, ring number...">
             </div>
+            <button class="ring-search-btn" onclick="openRingSearchModal()">
+                <i class="fas fa-search-plus"></i> Search Ring History
+            </button>
             <div class="filter-controls">
                 <select id="cultureFilter">
                     <option value="">All Cultures</option>
@@ -349,6 +352,25 @@
                     <button type="submit">Copy Race with All Entries</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Ring Search Modal -->
+    <div id="ringSearchModal" class="modal">
+        <div class="modal-content ring-search-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-search"></i> Search Pigeon History by Ring Number</h2>
+                <span class="close" onclick="closeRingSearchModal()">&times;</span>
+            </div>
+            <div class="ring-search-container">
+                <div class="ring-search-input-group">
+                    <input type="text" id="ringSearchInput" placeholder="Enter ring number (e.g., 24-52228-h)" autocomplete="off">
+                    <button onclick="searchRingNumber()" class="btn-search-ring">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                <div id="ringSearchResults" class="ring-search-results"></div>
+            </div>
         </div>
     </div>
 
