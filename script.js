@@ -1441,69 +1441,76 @@ function downloadPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('landscape'); // Use landscape for better table fit
 
-        // Add logo to PDF (using existing logo from page if available)
+        // Add logo to PDF with higher quality
         try {
             const logoElement = document.querySelector('.race-header-logo');
             if (logoElement && logoElement.complete) {
-                // Create canvas to convert logo to base64
+                // Create high-resolution canvas for better quality
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
-                canvas.width = 100;
-                canvas.height = 100;
+                // Use higher resolution for better quality
+                canvas.width = 300;
+                canvas.height = 300;
 
-                // Draw the logo
-                ctx.drawImage(logoElement, 0, 0, 100, 100);
-                const logoDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                // Enable image smoothing for better quality
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
 
-                // Add to PDF
-                doc.addImage(logoDataUrl, 'JPEG', 20, 5, 30, 30);
+                // Draw the logo at high resolution
+                ctx.drawImage(logoElement, 0, 0, 300, 300);
+                
+                // Convert to PNG for better quality (no compression artifacts)
+                const logoDataUrl = canvas.toDataURL('image/png', 1.0);
+
+                // Add to PDF - positioned on the left side
+                doc.addImage(logoDataUrl, 'PNG', 10, 8, 25, 25);
             } else {
                 // Fallback: simple logo placeholder
                 doc.setFillColor(102, 126, 234);
-                doc.circle(35, 20, 15, 'F');
+                doc.circle(22.5, 20.5, 12, 'F');
                 doc.setTextColor(255, 255, 255);
-                doc.setFontSize(12);
-                doc.text('LOGO', 35, 25, { align: 'center' });
+                doc.setFontSize(10);
+                doc.text('LOGO', 22.5, 23, { align: 'center' });
             }
         } catch (error) {
             console.warn('Could not add logo to PDF, using placeholder:', error);
             // Fallback: simple logo placeholder
             doc.setFillColor(102, 126, 234);
-            doc.circle(35, 20, 15, 'F');
+            doc.circle(22.5, 20.5, 12, 'F');
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(12);
-            doc.text('LOGO', 35, 25, { align: 'center' });
+            doc.setFontSize(10);
+            doc.text('LOGO', 22.5, 23, { align: 'center' });
         }
 
-        // Header with professional styling
+        // Header with professional styling - positioned to avoid logo
         doc.setFontSize(16);
         doc.setTextColor(102, 126, 234);
-        doc.text('CHAPAINAWABGANJ RACING PIGEON ASSOCIATION', 148, 15, { align: 'center' });
+        doc.text('CHAPAINAWABGANJ RACING PIGEON ASSOCIATION', 148, 12, { align: 'center' });
 
         // Subtitle
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setTextColor(128, 128, 128);
-        doc.text('Since 2023 - Professional Pigeon Racing Management', 148, 22, { align: 'center' });
+        doc.text('Since 2023 - Professional Pigeon Racing Management', 148, 18, { align: 'center' });
 
-
-        // Race details in a more compact format
-        doc.setFontSize(10);
+        // Race details section - better layout with logo on left
+        doc.setFontSize(9);
         doc.setTextColor(0, 0, 0);
 
-        // Left column
-        doc.text(`Release Time: ${race.releaseTime}:00 AM`, 20, 30);
-        doc.text(`Number Of P: ${getCurrentRaceEntries().length}`, 20, 37);
-        doc.text(`No.Of Participant: ${[...new Set(getCurrentRaceEntries().map(entry => entry.loftName))].length}`, 20, 44);
+        // Left column - positioned beside logo
+        const leftColX = 40;
+        doc.text(`Release Time: ${race.releaseTime}:00 AM`, leftColX, 25);
+        doc.text(`Number Of P: ${getCurrentRaceEntries().length}`, leftColX, 30);
+        doc.text(`No.Of Participant: ${[...new Set(getCurrentRaceEntries().map(entry => entry.loftName))].length}`, leftColX, 35);
 
         // Center - Race name badge
         doc.setFillColor(220, 38, 38);
-        doc.rect(120, 25, 56, 12, 'F');
+        doc.rect(120, 23, 56, 10, 'F');
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(12);
-        doc.text(race.name, 148, 33, { align: 'center' });
+        doc.setFontSize(11);
+        doc.text(race.name, 148, 30, { align: 'center' });
         doc.setTextColor(0, 0, 0);
-        doc.setFontSize(10);
-        doc.text(race.season || '2024-2025', 148, 42, { align: 'center' });
+        doc.setFontSize(8);
+        doc.text(race.season || '2024-2025', 148, 37, { align: 'center' });
 
         // Right column
         const date = new Date(race.date);
@@ -1513,9 +1520,10 @@ function downloadPDF() {
             year: 'numeric'
         }).toUpperCase().replace(/(\d+)/, '$1TH');
 
-        doc.text(`Date: ${formattedDate}`, 200, 30);
-        doc.text(`Visibility: ${race.visibility}`, 200, 37);
-        doc.text(`Registered Pigeon: ${getCurrentRaceEntries().length}`, 200, 44);
+        const rightColX = 200;
+        doc.text(`Date: ${formattedDate}`, rightColX, 25);
+        doc.text(`Visibility: ${race.visibility}`, rightColX, 30);
+        doc.text(`Registered Pigeon: ${getCurrentRaceEntries().length}`, rightColX, 35);
 
         // Get all entries for the table
         const entries = getCurrentRaceEntries();
@@ -1549,7 +1557,7 @@ function downloadPDF() {
         doc.autoTable({
             head: headers,
             body: tableData,
-            startY: 55,
+            startY: 45,
             styles: {
                 fontSize: 7,
                 cellPadding: 1.5,
