@@ -99,8 +99,8 @@
                             <span class="value" id="headerReleaseTime">08:05:00 AM</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">Number Of P</span>
-                            <span class="value" id="headerParticipants">0</span>
+                            <span class="label">Returned Pigeons:</span>
+                            <span class="value" id="headerReturnedPigeons">0</span>
                         </div>
                         <div class="info-row">
                             <span class="label">No.Of Participant :</span>
@@ -111,7 +111,7 @@
                         <div class="race-name-badge" id="headerRaceName">
                             JOBAIL BULL 70KM
                         </div>
-                        <div class="race-year">2024-2025</div>
+                        <div class="race-year" id="headerRaceSeason">2024-2025</div>
                     </div>
                     <div class="race-info-right">
                         <div class="info-row">
@@ -150,7 +150,7 @@
                 <i class="fas fa-trophy"></i>
                 <div>
                     <h3 id="completedRaces">0</h3>
-                    <p>Completed</p>
+                    <p>Returned</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -413,9 +413,18 @@
                             distance for this pigeon</small>
                     </div>
                     <div class="form-group">
+                        <label for="returnStatus">Return Status</label>
+                        <select id="returnStatus" required>
+                            <option value="registered">Registered (Not Yet Returned)</option>
+                            <option value="returned">Returned</option>
+                            <option value="not_returned">Not Returned (Missing)</option>
+                        </select>
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Mark as "Returned" when pigeon comes back, or "Not Returned" if missing after race ends.</small>
+                    </div>
+                    <div class="form-group">
                         <label for="trappingTime">Trapping Time <span class="optional-label">(Optional)</span></label>
-                        <input type="time" id="trappingTime" step="1" placeholder="Will be added when pigeon returns">
-                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Optional: Add when pigeon returns. Leave empty during initial registration.</small>
+                        <input type="time" id="trappingTime" step="1" placeholder="Add when pigeon returns">
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Required only if Return Status is "Returned".</small>
                     </div>
                     <div class="form-group">
                         <label for="club">Club</label>
