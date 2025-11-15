@@ -409,6 +409,20 @@ function renderTable(data) {
         const entryDistance = entry.distance || (race ? race.distance : 'N/A');
         const loftColorClass = loftColors[entry.loftName] || 'loft-color-1';
 
+        // Determine return status display
+        const returnStatus = entry.returnStatus || 'registered';
+        let statusBadge = '';
+        let rowStyle = '';
+        
+        if (returnStatus === 'returned') {
+            statusBadge = '<span style="color: #48bb78; font-weight: bold;">✓ Returned</span>';
+        } else if (returnStatus === 'not_returned') {
+            statusBadge = '<span style="color: #f56565; font-weight: bold;">✗ Missing</span>';
+            rowStyle = 'background-color: #fff5f5;'; // Light red background for missing pigeons
+        } else {
+            statusBadge = '<span style="color: #a0aec0; font-style: italic;">Registered</span>';
+        }
+
         // Build the row HTML conditionally based on authentication
         let rowHTML = `
             <td class="position-cell" style="background: #4a5568; color: white; text-align: center; font-weight: bold;">${entry.position}</td>
@@ -420,13 +434,21 @@ function renderTable(data) {
             <td style="text-align: center;"><span class="culture-badge culture-${entry.culture}">${entry.culture}</span></td>
             <td style="text-align: center;">${entryDistance}</td>
             <td style="text-align: center;">${race ? race.releaseTime : 'N/A'}</td>
-            <td style="text-align: center;">${entry.trappingTime || '<span style="color: #a0aec0; font-style: italic;">Pending</span>'}</td>
+            <td style="text-align: center;">
+                ${entry.trappingTime || '<span style="color: #a0aec0; font-style: italic;">--:--:--</span>'}
+                <br><small>${statusBadge}</small>
+            </td>
             <td style="text-align: center;"><strong>${entry.totalTime || '--:--:--'}</strong></td>
             <td style="text-align: center;">${entry.second || 0}</td>
             <td style="text-align: center;">${entry.minute || 0}</td>
             <td style="text-align: center;">${entry.velocity ? entry.velocity.toFixed(4) : '<span style="color: #a0aec0;">--</span>'}</td>
             <td style="text-align: center;"><span class="club-badge">${entry.club}</span></td>
         `;
+        
+        // Apply row style for missing pigeons
+        if (rowStyle) {
+            row.style.cssText = rowStyle;
+        }
 
         // Only add actions column if user is authenticated
         if (isAuthenticated) {
@@ -451,27 +473,28 @@ function renderTable(data) {
 
 function updateStats() {
     const entries = getCurrentRaceEntries();
-    const totalPigeons = entries.length;
-    const completedRaces = entries.filter(entry => entry.totalTime !== '--:--').length;
+    const totalPigeons = entries.length; // Total registered pigeons
+    const returnedPigeons = entries.filter(entry => entry.returnStatus === 'returned').length; // Pigeons marked as returned
+    const notReturnedPigeons = entries.filter(entry => entry.returnStatus === 'not_returned').length; // Missing pigeons
 
     // Count unique participants (loft names)
     const uniqueParticipants = [...new Set(entries.map(entry => entry.loftName))].length;
 
-    // Calculate average time
+    // Calculate average time (only for returned pigeons)
     let avgTime = '--:--';
-    if (completedRaces > 0) {
+    if (returnedPigeons > 0) {
         const totalSeconds = entries
-            .filter(entry => entry.second)
+            .filter(entry => entry.returnStatus === 'returned' && entry.second)
             .reduce((sum, entry) => sum + entry.second, 0);
-        const avgSeconds = Math.floor(totalSeconds / completedRaces);
+        const avgSeconds = Math.floor(totalSeconds / returnedPigeons);
         const minutes = Math.floor(avgSeconds / 60);
         const seconds = avgSeconds % 60;
         avgTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
     }
 
     document.getElementById('totalParticipants').textContent = uniqueParticipants;
-    document.getElementById('totalPigeons').textContent = totalPigeons;
-    document.getElementById('completedRaces').textContent = completedRaces;
+    document.getElementById('totalPigeons').textContent = totalPigeons; // Registered
+    document.getElementById('completedRaces').textContent = `${returnedPigeons} / ${totalPigeons}`; // Returned / Total
     document.getElementById('avgTime').textContent = avgTime;
 }
 
@@ -602,11 +625,15 @@ function updateProfessionalHeader(race, entries, uniqueParticipants) {
         year: 'numeric'
     }).toUpperCase().replace(/(\d+)/, '$1TH');
 
+    // Calculate returned pigeons (those marked as returned)
+    const returnedPigeons = entries.filter(entry => entry.returnStatus === 'returned').length;
+
     // Update header elements
     document.getElementById('headerReleaseTime').textContent = formattedTime;
-    document.getElementById('headerParticipants').textContent = entries.length;
+    document.getElementById('headerReturnedPigeons').textContent = returnedPigeons;
     document.getElementById('headerParticipantCount').textContent = uniqueParticipants;
     document.getElementById('headerRaceName').textContent = race.name;
+    document.getElementById('headerRaceSeason').textContent = race.season || '2024-2025';
     document.getElementById('headerDate').textContent = formattedDate;
     document.getElementById('headerVisibility').textContent = race.visibility;
     document.getElementById('headerRegisteredPigeons').textContent = entries.length;
@@ -962,8 +989,9 @@ function editEntry(id) {
     document.getElementById('ringNumber').value = entry.ringNumber;
     document.getElementById('culture').value = entry.culture;
     document.getElementById('entryDistance').value = entry.distance || '';
-    document.getElementById('trappingTime').value = entry.trappingTime;
+    document.getElementById('trappingTime').value = entry.trappingTime || '';
     document.getElementById('club').value = entry.club;
+    document.getElementById('returnStatus').value = entry.returnStatus || 'registered';
 
     document.getElementById('entryModal').style.display = 'block';
 }
@@ -1119,6 +1147,13 @@ async function handleFormSubmit(e) {
 
     const entryDistanceValue = document.getElementById('entryDistance').value;
     const trappingTimeStr = document.getElementById('trappingTime').value;
+    const returnStatus = document.getElementById('returnStatus').value;
+
+    // Validate: if status is "returned", trapping time is required
+    if (returnStatus === 'returned' && !trappingTimeStr) {
+        alert('Trapping time is required when marking pigeon as "Returned"');
+        return;
+    }
 
     const formData = {
         loftName: document.getElementById('loftName').value,
@@ -1126,7 +1161,8 @@ async function handleFormSubmit(e) {
         culture: document.getElementById('culture').value,
         distance: entryDistanceValue ? parseFloat(entryDistanceValue) : null,
         trappingTime: trappingTimeStr || null,
-        club: document.getElementById('club').value
+        club: document.getElementById('club').value,
+        returnStatus: returnStatus
     };
 
     // Initialize default values for entries without trapping time
@@ -1355,7 +1391,8 @@ function loadFromLocalStorage() {
                             second: 3110,
                             minute: 52,
                             velocity: 1484.2899,
-                            club: "CNRPA"
+                            club: "CNRPA",
+                            returnStatus: "returned"
                         },
                         {
                             id: 2,
@@ -1368,7 +1405,8 @@ function loadFromLocalStorage() {
                             second: 3113,
                             minute: 52,
                             velocity: 1482.8595,
-                            club: "CNRPA"
+                            club: "CNRPA",
+                            returnStatus: "returned"
                         },
                         {
                             id: 3,
@@ -1381,7 +1419,8 @@ function loadFromLocalStorage() {
                             second: 3125,
                             minute: 52,
                             velocity: 1477.1654,
-                            club: "CNRPA"
+                            club: "CNRPA",
+                            returnStatus: "returned"
                         }
                     ]
                 }
@@ -1498,9 +1537,13 @@ function downloadPDF() {
 
         // Left column - positioned beside logo
         const leftColX = 40;
+        const entries = getCurrentRaceEntries();
+        const returnedPigeons = entries.filter(entry => entry.returnStatus === 'returned').length;
+        const notReturnedPigeons = entries.filter(entry => entry.returnStatus === 'not_returned').length;
+        
         doc.text(`Release Time: ${race.releaseTime}:00 AM`, leftColX, 25);
-        doc.text(`Number Of P: ${getCurrentRaceEntries().length}`, leftColX, 30);
-        doc.text(`No.Of Participant: ${[...new Set(getCurrentRaceEntries().map(entry => entry.loftName))].length}`, leftColX, 35);
+        doc.text(`Returned Pigeons: ${returnedPigeons}`, leftColX, 30);
+        doc.text(`Missing Pigeons: ${notReturnedPigeons}`, leftColX, 35);
 
         // Center - Race name badge
         doc.setFillColor(220, 38, 38);
@@ -1523,19 +1566,27 @@ function downloadPDF() {
         const rightColX = 200;
         doc.text(`Date: ${formattedDate}`, rightColX, 25);
         doc.text(`Visibility: ${race.visibility}`, rightColX, 30);
-        doc.text(`Registered Pigeon: ${getCurrentRaceEntries().length}`, rightColX, 35);
+        doc.text(`Registered Pigeon: ${entries.length}`, rightColX, 35);
 
-        // Get all entries for the table
-        const entries = getCurrentRaceEntries();
+        // entries already declared above, no need to redeclare
 
         // Table headers matching the exact format
         const headers = [
-            ['POSITION', 'S/L', "Loft's Name", 'Ban Ring No', 'Culture', 'Distance\n(KM)', 'Release\nTime', 'Trapping\nTime', 'Total Time', 'Second', 'Minute', 'Velocity\n(YPM)', 'Club\nName']
+            ['POSITION', 'S/L', "Loft's Name", 'Ban Ring No', 'Culture', 'Distance\n(KM)', 'Release\nTime', 'Trapping\nTime', 'Status', 'Total Time', 'Second', 'Minute', 'Velocity\n(YPM)', 'Club\nName']
         ];
 
         // Table data with proper formatting
         const tableData = entries.map(entry => {
             const entryDistance = entry.distance || race.distance;
+            
+            // Format status for display
+            let statusText = 'Registered';
+            if (entry.returnStatus === 'returned') {
+                statusText = 'Returned';
+            } else if (entry.returnStatus === 'not_returned') {
+                statusText = 'Missing';
+            }
+            
             return [
                 entry.position, // POSITION
                 entry.position, // S/L
@@ -1544,11 +1595,12 @@ function downloadPDF() {
                 entry.culture.toLowerCase(), // Culture
                 entryDistance, // Distance
                 race.releaseTime, // Release Time
-                entry.trappingTime, // Trapping Time
+                entry.trappingTime || '--:--:--', // Trapping Time
+                statusText, // Status
                 entry.totalTime, // Total Time
                 entry.second || 0, // Second
                 entry.minute || 0, // Minute
-                entry.velocity.toFixed(4), // Velocity
+                entry.velocity ? entry.velocity.toFixed(4) : '--', // Velocity
                 entry.club // Club Name
             ];
         });
@@ -1572,19 +1624,20 @@ function downloadPDF() {
                 valign: 'middle'
             },
             columnStyles: {
-                0: { fillColor: [74, 85, 104], textColor: 255, halign: 'center', cellWidth: 18 }, // POSITION
-                1: { halign: 'center', cellWidth: 12 }, // S/L
-                2: { halign: 'left', cellWidth: 35 }, // Loft's Name
-                3: { halign: 'center', cellWidth: 25 }, // Ban Ring No
-                4: { halign: 'center', cellWidth: 15 }, // Culture
-                5: { halign: 'center', cellWidth: 18 }, // Distance
-                6: { halign: 'center', cellWidth: 18 }, // Release Time
-                7: { halign: 'center', cellWidth: 18 }, // Trapping Time
-                8: { halign: 'center', cellWidth: 20 }, // Total Time
-                9: { halign: 'center', cellWidth: 15 }, // Second
-                10: { halign: 'center', cellWidth: 15 }, // Minute
-                11: { halign: 'center', cellWidth: 20 }, // Velocity
-                12: { halign: 'center', cellWidth: 15 } // Club Name
+                0: { fillColor: [74, 85, 104], textColor: 255, halign: 'center', cellWidth: 16 }, // POSITION
+                1: { halign: 'center', cellWidth: 10 }, // S/L
+                2: { halign: 'left', cellWidth: 30 }, // Loft's Name
+                3: { halign: 'center', cellWidth: 22 }, // Ban Ring No
+                4: { halign: 'center', cellWidth: 13 }, // Culture
+                5: { halign: 'center', cellWidth: 15 }, // Distance
+                6: { halign: 'center', cellWidth: 15 }, // Release Time
+                7: { halign: 'center', cellWidth: 15 }, // Trapping Time
+                8: { halign: 'center', cellWidth: 18 }, // Status
+                9: { halign: 'center', cellWidth: 18 }, // Total Time
+                10: { halign: 'center', cellWidth: 13 }, // Second
+                11: { halign: 'center', cellWidth: 13 }, // Minute
+                12: { halign: 'center', cellWidth: 18 }, // Velocity
+                13: { halign: 'center', cellWidth: 13 } // Club Name
             },
             alternateRowStyles: {
                 fillColor: [248, 250, 252]
@@ -1628,6 +1681,24 @@ function downloadPDF() {
                             data.cell.styles.fillColor = [237, 242, 247];
                             data.cell.styles.textColor = [113, 128, 150];
                             break;
+                    }
+                }
+
+                // Style Status column (column index 8)
+                if (data.column.index === 8) {
+                    const status = data.cell.text[0];
+                    if (status === 'Returned') {
+                        data.cell.styles.fillColor = [198, 246, 213]; // Green
+                        data.cell.styles.textColor = [34, 139, 34];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (status === 'Missing') {
+                        data.cell.styles.fillColor = [254, 215, 215]; // Red
+                        data.cell.styles.textColor = [197, 48, 48];
+                        data.cell.styles.fontStyle = 'bold';
+                    } else if (status === 'Registered') {
+                        data.cell.styles.fillColor = [247, 250, 252]; // Gray
+                        data.cell.styles.textColor = [113, 128, 150];
+                        data.cell.styles.fontStyle = 'italic';
                     }
                 }
 
