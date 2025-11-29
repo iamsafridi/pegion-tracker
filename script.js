@@ -1523,41 +1523,64 @@ function downloadPDF() {
             doc.text('LOGO', 22.5, 23, { align: 'center' });
         }
 
-        // Header with professional styling - positioned to avoid logo
-        doc.setFontSize(16);
+        // Beautiful Header Section with Bold Text
+        // Main Title - Bold and Large
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
         doc.setTextColor(102, 126, 234);
         doc.text('CHAPAINAWABGANJ RACING PIGEON ASSOCIATION', 148, 12, { align: 'center' });
 
-        // Subtitle
+        // Subtitle - Italic
         doc.setFontSize(9);
-        doc.setTextColor(128, 128, 128);
+        doc.setFont('helvetica', 'italic');
+        doc.setTextColor(100, 100, 100);
         doc.text('Since 2023 - Professional Pigeon Racing Management', 148, 18, { align: 'center' });
 
-        // Race details section - better layout with logo on left
-        doc.setFontSize(9);
-        doc.setTextColor(0, 0, 0);
+        // Decorative line under header
+        doc.setDrawColor(102, 126, 234);
+        doc.setLineWidth(0.5);
+        doc.line(40, 20, 256, 20);
 
-        // Left column - positioned beside logo
-        const leftColX = 40;
+        // Race details section - better layout with logo on left
         const entries = getCurrentRaceEntries();
         const returnedPigeons = entries.filter(entry => entry.returnStatus === 'returned').length;
         const notReturnedPigeons = entries.filter(entry => entry.returnStatus === 'not_returned').length;
-        
-        doc.text(`Release Time: ${race.releaseTime}:00 AM`, leftColX, 25);
-        doc.text(`Returned Pigeons: ${returnedPigeons}`, leftColX, 30);
-        doc.text(`Missing Pigeons: ${notReturnedPigeons}`, leftColX, 35);
 
-        // Center - Race name badge
+        // Left column - positioned beside logo with bold labels
+        const leftColX = 40;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(74, 85, 104);
+        
+        doc.text('Release Time:', leftColX, 25);
+        doc.text('Returned Pigeons:', leftColX, 30);
+        doc.text('Missing Pigeons:', leftColX, 35);
+        
+        // Values in normal font
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(`${race.releaseTime}:00 AM`, leftColX + 28, 25);
+        doc.text(`${returnedPigeons}`, leftColX + 35, 30);
+        doc.text(`${notReturnedPigeons}`, leftColX + 32, 35);
+
+        // Center - Race name badge with shadow effect
+        // Shadow
+        doc.setFillColor(180, 30, 30);
+        doc.rect(121, 24, 56, 10, 'F');
+        // Main badge
         doc.setFillColor(220, 38, 38);
         doc.rect(120, 23, 56, 10, 'F');
         doc.setTextColor(255, 255, 255);
         doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
         doc.text(race.name, 148, 30, { align: 'center' });
-        doc.setTextColor(0, 0, 0);
+        
+        // Season text
         doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
         doc.text(race.season || '2024-2025', 148, 37, { align: 'center' });
 
-        // Right column
+        // Right column with bold labels
         const date = new Date(race.date);
         const formattedDate = date.toLocaleDateString('en-GB', {
             day: 'numeric',
@@ -1566,9 +1589,25 @@ function downloadPDF() {
         }).toUpperCase().replace(/(\d+)/, '$1TH');
 
         const rightColX = 200;
-        doc.text(`Date: ${formattedDate}`, rightColX, 25);
-        doc.text(`Visibility: ${race.visibility}`, rightColX, 30);
-        doc.text(`Registered Pigeon: ${entries.length}`, rightColX, 35);
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(74, 85, 104);
+        
+        doc.text('Date:', rightColX, 25);
+        doc.text('Visibility:', rightColX, 30);
+        doc.text('Registered Pigeon:', rightColX, 35);
+        
+        // Values in normal font
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(0, 0, 0);
+        doc.text(formattedDate, rightColX + 12, 25);
+        doc.text(race.visibility, rightColX + 20, 30);
+        doc.text(`${entries.length}`, rightColX + 38, 35);
+
+        // Bottom decorative line
+        doc.setDrawColor(102, 126, 234);
+        doc.setLineWidth(0.3);
+        doc.line(40, 40, 256, 40);
 
         // entries already declared above, no need to redeclare
 
