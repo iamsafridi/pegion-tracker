@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CHAPAINAWABGANJ RACING PEGION ASSOCIATION</title>
+    <link rel="icon" type="image/jpeg" href="logo.jpeg">
     <link rel="stylesheet" href="styles.css">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
@@ -13,7 +14,7 @@
     <div class="container">
         <header class="header">
             <div class="header-content">
-                <h1><i class="fas fa-dove"></i> CHAPAINAWABGANJ RACING PEGION ASSOCIATION</h1>
+                <h1><img src="logo.jpeg" alt="Logo" class="header-logo"> CHAPAINAWABGANJ RACING PEGION ASSOCIATION</h1>
                 <div class="header-info">
                     <span class="current-race" id="currentRaceInfo">Select a race to view</span>
                 </div>
@@ -29,6 +30,41 @@
             </div>
         </header>
 
+        <!-- Authentication Section -->
+        <div class="auth-section" id="authSection">
+            <div class="auth-content" id="authContent">
+                <!-- Sign In State -->
+                <div id="signInSection" class="auth-signin">
+                    <span class="auth-label">Sign in to edit races:</span>
+                    <div class="login-form">
+                        <input type="email" id="loginEmail" placeholder="Enter your email" class="login-input">
+                        <input type="password" id="loginPassword" placeholder="Enter password" class="login-input">
+                        <button id="loginBtn" onclick="signInWithPassword()" class="login-btn">
+                            <i class="fas fa-sign-in-alt"></i> Sign In
+                        </button>
+                    </div>
+                    <span id="authStatus" class="auth-status"></span>
+                </div>
+
+                <!-- Signed In State -->
+                <div id="signedInSection" class="auth-signedin" style="display: none;">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="user-details">
+                            <span id="userName" class="user-name"></span>
+                            <span id="userEmail" class="user-email"></span>
+                        </div>
+                    </div>
+                    <button id="signOutBtn" onclick="signOut()" class="signout-btn">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </button>
+                    <span id="authStatusSignedIn" class="auth-status"></span>
+                </div>
+            </div>
+        </div>
+
         <div class="race-selector">
             <div class="race-selector-content">
                 <label for="raceSelect">Select Race:</label>
@@ -38,7 +74,10 @@
                 <button class="btn-edit-race" onclick="editCurrentRace()" id="editRaceBtn" disabled>
                     <i class="fas fa-edit"></i> Edit Race
                 </button>
-                <button class="btn-delete-race" onclick="deleteCurrentRace()" id="deleteRaceBtn" disabled>
+                <button class="btn-copy-race" onclick="copyCurrentRace()" id="copyRaceBtn" disabled>
+                    <i class="fas fa-copy"></i> Copy Race
+                </button>
+                <button class="btn-delete-race" onclick="deleteCurrentRace()" id="deleteRaceBtn" disabled style="display: none;">
                     <i class="fas fa-trash"></i> Delete Race
                 </button>
             </div>
@@ -48,9 +87,7 @@
         <div class="race-header" id="raceHeaderSection" style="display: none;">
             <div class="race-header-content">
                 <div class="logo-section">
-                    <div class="logo-placeholder">
-                        <i class="fas fa-dove"></i>
-                    </div>
+                    <img src="logo.jpeg" alt="Chapainawabganj Racing Pigeon Association Logo" class="race-header-logo">
                 </div>
                 <div class="association-title">
                     <h1>CHAPAINAWABGANJ RACING PEGION ASSOCIATION</h1>
@@ -62,8 +99,8 @@
                             <span class="value" id="headerReleaseTime">08:05:00 AM</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">Number Of P</span>
-                            <span class="value" id="headerParticipants">0</span>
+                            <span class="label">Returned Pigeons:</span>
+                            <span class="value" id="headerReturnedPigeons">0</span>
                         </div>
                         <div class="info-row">
                             <span class="label">No.Of Participant :</span>
@@ -74,7 +111,7 @@
                         <div class="race-name-badge" id="headerRaceName">
                             JOBAIL BULL 70KM
                         </div>
-                        <div class="race-year">2024-2025</div>
+                        <div class="race-year" id="headerRaceSeason">2024-2025</div>
                     </div>
                     <div class="race-info-right">
                         <div class="info-row">
@@ -113,7 +150,7 @@
                 <i class="fas fa-trophy"></i>
                 <div>
                     <h3 id="completedRaces">0</h3>
-                    <p>Completed</p>
+                    <p>Returned</p>
                 </div>
             </div>
             <div class="stat-card">
@@ -125,11 +162,29 @@
             </div>
         </div>
 
+        <!-- Culture Color Legend -->
+        <div class="culture-legend" id="cultureLegend" style="display: none;">
+            <h4><i class="fas fa-palette"></i> Culture Colors</h4>
+            <div class="legend-items">
+                <span class="culture-badge culture-blue">Blue</span>
+                <span class="culture-badge culture-chekr">ChekR</span>
+                <span class="culture-badge culture-rchek">RChek</span>
+                <span class="culture-badge culture-mily">Mily</span>
+                <span class="culture-badge culture-piet">Piet</span>
+                <span class="culture-badge culture-white">White</span>
+                <span class="culture-badge culture-black">Black</span>
+                <span class="culture-badge culture-grizzel">Grizzel</span>
+            </div>
+        </div>
+
         <div class="controls">
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" placeholder="Search by loft name, ring number...">
             </div>
+            <button class="ring-search-btn" onclick="openRingSearchModal()">
+                <i class="fas fa-search-plus"></i> Search Ring History
+            </button>
             <div class="filter-controls">
                 <select id="cultureFilter">
                     <option value="">All Cultures</option>
@@ -235,6 +290,10 @@
                             <option value="RAINY">RAINY</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label for="raceSeason">Season/Timeline</label>
+                        <input type="text" id="raceSeason" placeholder="e.g., 2024-2025" value="2024-2025" required>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button type="button" onclick="closeRaceModal()">Cancel</button>
@@ -245,6 +304,75 @@
     </div>
 
 
+
+    <!-- Copy Race Modal -->
+    <div id="copyRaceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Copy Race</h2>
+                <span class="close" onclick="closeCopyRaceModal()">&times;</span>
+            </div>
+            <form id="copyRaceForm">
+                <div class="form-group">
+                    <label for="copyRaceName">New Race Name</label>
+                    <input type="text" id="copyRaceName" required>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceDate">Race Date</label>
+                    <input type="date" id="copyRaceDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceLocation">Location</label>
+                    <input type="text" id="copyRaceLocation" required>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceDistance">Distance (KM)</label>
+                    <input type="number" id="copyRaceDistance" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceReleaseTime">Release Time</label>
+                    <input type="time" id="copyRaceReleaseTime" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceVisibility">Visibility</label>
+                    <select id="copyRaceVisibility" required>
+                        <option value="">Select Visibility</option>
+                        <option value="CLEAR">Clear</option>
+                        <option value="FOGGY">Foggy</option>
+                        <option value="CLOUDY">Cloudy</option>
+                        <option value="RAINY">Rainy</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="copyRaceSeason">Season/Timeline</label>
+                    <input type="text" id="copyRaceSeason" placeholder="e.g., 2024-2025" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" onclick="closeCopyRaceModal()">Cancel</button>
+                    <button type="submit">Copy Race with All Entries</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Ring Search Modal -->
+    <div id="ringSearchModal" class="modal">
+        <div class="modal-content ring-search-modal">
+            <div class="modal-header">
+                <h2><i class="fas fa-search"></i> Search Pigeon History by Ring Number</h2>
+                <span class="close" onclick="closeRingSearchModal()">&times;</span>
+            </div>
+            <div class="ring-search-container">
+                <div class="ring-search-input-group">
+                    <input type="text" id="ringSearchInput" placeholder="Enter ring number (e.g., 24-52228-h)" autocomplete="off">
+                    <button onclick="searchRingNumber()" class="btn-search-ring">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+                <div id="ringSearchResults" class="ring-search-results"></div>
+            </div>
+        </div>
+    </div>
 
     <!-- Add/Edit Entry Modal -->
     <div id="entryModal" class="modal">
@@ -268,9 +396,13 @@
                         <select id="culture" required>
                             <option value="">Select Culture</option>
                             <option value="blue">Blue</option>
-                            <option value="cheq">Cheq</option>
-                            <option value="pire">Pire</option>
-                            <option value="mksl">MKSL</option>
+                            <option value="chekr">ChekR</option>
+                            <option value="rchek">RChek</option>
+                            <option value="mily">Mily</option>
+                            <option value="piet">Piet</option>
+                            <option value="white">White</option>
+                            <option value="black">Black</option>
+                            <option value="grizzel">Grizzel</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -281,10 +413,18 @@
                             distance for this pigeon</small>
                     </div>
                     <div class="form-group">
-                        <label for="trappingTime">Trapping Time</label>
-                        <input type="time" id="trappingTime" step="1" required>
-                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Includes seconds for precise
-                            timing</small>
+                        <label for="returnStatus">Return Status</label>
+                        <select id="returnStatus" required>
+                            <option value="registered">Registered (Not Yet Returned)</option>
+                            <option value="returned">Returned</option>
+                            <option value="not_returned">Not Returned (Missing)</option>
+                        </select>
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Mark as "Returned" when pigeon comes back, or "Not Returned" if missing after race ends.</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="trappingTime">Trapping Time <span class="optional-label">(Optional)</span></label>
+                        <input type="time" id="trappingTime" step="1" placeholder="Add when pigeon returns">
+                        <small style="color: #718096; font-size: 12px; margin-top: 4px;">Required only if Return Status is "Returned".</small>
                     </div>
                     <div class="form-group">
                         <label for="club">Club</label>

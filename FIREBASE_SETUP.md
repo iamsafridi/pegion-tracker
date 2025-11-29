@@ -53,20 +53,23 @@ service cloud.firestore {
 }
 ```
 
-3. For production, use more restrictive rules:
+3. **IMPORTANT**: Update your Firestore security rules to allow writes:
+
+Since we're using a simple password-based authentication (not Firebase Auth), you need to allow writes for all users. Replace your Firestore rules with:
 
 ```javascript
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read access to races
-    match /races/{raceId} {
-      allow read: if true;
-      allow write: if request.auth != null; // Requires authentication
+    // Allow read and write access to all users
+    match /{document=**} {
+      allow read, write: if true;
     }
   }
 }
 ```
+
+**Note**: This allows all users to read and write. For production use, you should implement proper Firebase Authentication or server-side validation.
 
 ## Step 6: Test the Connection
 
@@ -128,3 +131,60 @@ If you encounter issues:
 4. Check Firebase status page for service issues
 
 The application will work with or without Firebase - it automatically detects availability and provides appropriate functionality.
+## F
+irebase Authentication Setup
+
+### Step 1: Enable Google Authentication
+
+1. In your Firebase project console, click on "Authentication"
+2. Click "Get started"
+3. Go to "Sign-in method" tab
+4. Click on "Google" provider
+5. Enable Google sign-in
+6. Add your project's authorized domains (e.g., localhost, your-domain.com)
+7. Click "Save"
+
+### Step 2: Update Firestore Security Rules for Authentication
+
+Replace your Firestore rules with:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow read access to all users
+    match /{document=**} {
+      allow read: if true;
+    }
+    
+    // Allow write access only to authenticated and authorized users
+    match /races/{raceId} {
+      allow write: if request.auth != null && 
+        request.auth.token.email in ['abdussamad332211@gmail.com', 'selimreza9t3@gmail.com'];
+    }
+  }
+}
+```
+
+### Step 3: Configure OAuth Consent Screen (if needed)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Select your Firebase project
+3. Go to "APIs & Services" > "OAuth consent screen"
+4. Configure the consent screen with your app information
+
+### Authentication Features
+
+**For Authorized Users (`abdussamad332211@gmail.com`, `selimreza9t3@gmail.com`):**
+- ✅ Create, edit, and delete races
+- ✅ Add, edit, and delete pigeon entries
+- ✅ Copy races with all entries
+- ✅ Full access to all features
+
+**For Unauthorized Users:**
+- ✅ View all race data
+- ✅ Download PDF reports
+- ❌ Cannot edit or delete anything
+- ❌ Action buttons are hidden
+
+The application now uses secure Google OAuth authentication with role-based access control!

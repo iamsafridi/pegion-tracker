@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400">
+  <!-- Background circle -->
+  <circle cx="200" cy="200" r="180" fill="white" stroke="#e53e3e" stroke-width="8"/>
+  
+  <!-- Pigeon -->
+  <g transform="translate(200,200)">
+    <!-- Body -->
+    <ellipse cx="0" cy="20" rx="40" ry="60" fill="#4299e1"/>
+    
+    <!-- Wings -->
+    <path d="M-40 0 Q-80 -20 -90 -40 Q-85 -50 -70 -45 Q-50 -35 -40 -10 Z" fill="#4299e1"/>
+    <path d="M40 0 Q80 -20 90 -40 Q85 -50 70 -45 Q50 -35 40 -10 Z" fill="#4299e1"/>
+    
+    <!-- Head -->
+    <circle cx="0" cy="-30" r="25" fill="#4299e1"/>
+    
+    <!-- Eye -->
+    <circle cx="8" cy="-35" r="4" fill="white"/>
+    <circle cx="8" cy="-35" r="2" fill="black"/>
+    
+    <!-- Beak -->
+    <path d="M20 -30 L35 -28 L20 -25 Z" fill="#f6ad55"/>
+    
+    <!-- Tail feathers -->
+    <path d="M0 80 Q-20 100 -30 120 Q-25 125 -15 120 Q0 100 0 80 Z" fill="#4299e1"/>
+    <path d="M0 80 Q20 100 30 120 Q25 125 15 120 Q0 100 0 80 Z" fill="#4299e1"/>
+  </g>
+  
+  <!-- Speed lines -->
+  <g stroke="#2d3748" stroke-width="3" fill="none">
+    <line x1="80" y1="150" x2="100" y2="150"/>
+    <line x1="80" y1="170" x2="100" y2="170"/>
+    <line x1="80" y1="190" x2="100" y2="190"/>
+    
+    <line x1="300" y1="150" x2="320" y2="150"/>
+    <line x1="300" y1="170" x2="320" y2="170"/>
+    <line x1="300" y1="190" x2="320" y2="190"/>
+  </g>
+  
+  <!-- Laurel branches -->
+  <g fill="#48bb78">
+    <!-- Left branch -->
+    <path d="M60 280 Q50 270 45 260 Q50 255 55 260 Q65 270 60 280"/>
+    <path d="M70 290 Q60 280 55 270 Q60 265 65 270 Q75 280 70 290"/>
+    <path d="M80 300 Q70 290 65 280 Q70 275 75 280 Q85 290 80 300"/>
+    
+    <!-- Right branch -->
+    <path d="M340 280 Q350 270 355 260 Q350 255 345 260 Q335 270 340 280"/>
+    <path d="M330 290 Q340 280 345 270 Q340 265 335 270 Q325 280 330 290"/>
+    <path d="M320 300 Q330 290 335 280 Q330 275 325 280 Q315 290 320 300"/>
+  </g>
+  
+  <!-- Stars -->
+  <g fill="#48bb78">
+    <path d="M180 350 L185 360 L195 360 L187 367 L190 377 L180 370 L170 377 L173 367 L165 360 L175 360 Z"/>
+    <path d="M200 340 L207 352 L220 352 L210 361 L214 374 L200 366 L186 374 L190 361 L180 352 L193 352 Z"/>
+    <path d="M220 350 L225 360 L235 360 L227 367 L230 377 L220 370 L210 377 L213 367 L205 360 L215 360 Z"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="200" y="50" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#e53e3e">Chapainawabganj Racing Pigeon Association</text>
+  <text x="200" y="380" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#2d3748">Since: 2023</text>
+</svg>
